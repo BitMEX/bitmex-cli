@@ -1,0 +1,3 @@
+# Machine-readable catalogs: collapse in diffs, exclude from language stats.
+agents/tool-catalog.json linguist-generated
+agents/error-catalog.json linguist-generated

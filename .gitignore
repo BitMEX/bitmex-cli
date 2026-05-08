@@ -1,0 +1,24 @@
+/target
+dist/
+task.md
+.claude/
+.kai/
+.cursor/
+.idea/
+docs/changelog/
+changelog/
+
+# Secrets and credentials
+.env
+.env.*
+.env.local
+config.toml
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# OS
+.DS_Store
+.worktrees/

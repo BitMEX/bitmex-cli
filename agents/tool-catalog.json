@@ -1,0 +1,1097 @@
+{
+  "schema_version": "1.0.0",
+  "cli_version": "0.1.0",
+  "description": "Machine-readable command catalog for bitmex-cli.",
+  "global_flags": {
+    "--output / -o": "Output format: json or table (default table)",
+    "--verbose / -v": "Print request/response diagnostics to stderr",
+    "--testnet": "Use BitMEX testnet instead of mainnet",
+    "--api-key": "Override API key",
+    "--api-secret": "Override API secret (use --api-secret-stdin or --api-secret-file instead)",
+    "--api-url": "Override API base URL"
+  },
+  "groups": {
+    "market": "Public market data (no auth required)",
+    "order": "Order placement and management (auth required)",
+    "position": "Position management (auth required)",
+    "execution": "Execution and trade history (auth required)",
+    "wallet": "Wallet balances, deposits, withdrawals (auth required)",
+    "staking": "Staking positions and instruments (auth required)",
+    "account": "Account profile and preferences (auth required)",
+    "subaccount": "Subaccount management (auth required)",
+    "apikey": "API key management (auth required)",
+    "chat": "Chat messages and channels",
+    "guild": "Guild management (auth required)",
+    "bots": "Trading bots (auth required)",
+    "notifications": "Notifications and price alerts (auth required)",
+    "address": "Withdrawal address book (auth required)",
+    "referral": "Referral code management (auth required)",
+    "porl": "Proof of Reserves and Liabilities (auth required)",
+    "announce": "Site announcements (no auth required)",
+    "auth": "Credential management",
+    "utility": "Setup and interactive shell"
+  },
+  "commands": [
+    {
+      "name": "market instrument",
+      "command": "bitmex market instrument",
+      "group": "market",
+      "description": "Get instrument/contract information.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100},
+        {"name": "reverse", "type": "boolean", "required": false},
+        {"name": "active", "type": "boolean", "required": false},
+        {"name": "indices", "type": "boolean", "required": false},
+        {"name": "start_time", "type": "string", "required": false},
+        {"name": "end_time", "type": "string", "required": false}
+      ],
+      "example": "bitmex market instrument --symbol XBTUSD -o json"
+    },
+    {
+      "name": "market quote",
+      "command": "bitmex market quote",
+      "group": "market",
+      "description": "Get best bid/ask quotes.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100},
+        {"name": "bucketed", "type": "boolean", "required": false},
+        {"name": "bin_size", "type": "string", "required": false, "default": "1h"}
+      ],
+      "example": "bitmex market quote --symbol XBTUSD -o json"
+    },
+    {
+      "name": "market trades",
+      "command": "bitmex market trades",
+      "group": "market",
+      "description": "Get recent trades.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100},
+        {"name": "bucketed", "type": "boolean", "required": false},
+        {"name": "bin_size", "type": "string", "required": false, "default": "1h"}
+      ],
+      "example": "bitmex market trades --symbol XBTUSD --count 50 -o json"
+    },
+    {
+      "name": "market orderbook",
+      "command": "bitmex market orderbook <symbol>",
+      "group": "market",
+      "description": "Get L2 order book.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "depth", "type": "integer", "required": false, "default": 25}
+      ],
+      "example": "bitmex market orderbook XBTUSD --depth 10 -o json"
+    },
+    {
+      "name": "market funding",
+      "command": "bitmex market funding",
+      "group": "market",
+      "description": "Get perpetual funding rate history.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100},
+        {"name": "reverse", "type": "boolean", "required": false},
+        {"name": "start_time", "type": "string", "required": false},
+        {"name": "end_time", "type": "string", "required": false}
+      ],
+      "example": "bitmex market funding --symbol XBTUSD -o json"
+    },
+    {
+      "name": "market liquidation",
+      "command": "bitmex market liquidation",
+      "group": "market",
+      "description": "Get liquidation history.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex market liquidation --symbol XBTUSD -o json"
+    },
+    {
+      "name": "market settlement",
+      "command": "bitmex market settlement",
+      "group": "market",
+      "description": "Get settlement history.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex market settlement -o json"
+    },
+    {
+      "name": "market insurance",
+      "command": "bitmex market insurance",
+      "group": "market",
+      "description": "Get insurance fund history.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex market insurance -o json"
+    },
+    {
+      "name": "market stats",
+      "command": "bitmex market stats",
+      "group": "market",
+      "description": "Get site-wide trading statistics.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex market stats -o json"
+    },
+    {
+      "name": "market stats-history",
+      "command": "bitmex market stats-history",
+      "group": "market",
+      "description": "Get historical trading statistics.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false}
+      ],
+      "example": "bitmex market stats-history -o json"
+    },
+    {
+      "name": "market leaderboard",
+      "command": "bitmex market leaderboard",
+      "group": "market",
+      "description": "Get leaderboard.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "method", "type": "string", "required": false, "default": "notional"}
+      ],
+      "example": "bitmex market leaderboard -o json"
+    },
+    {
+      "name": "market composite-index",
+      "command": "bitmex market composite-index",
+      "group": "market",
+      "description": "Get composite index data.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false}
+      ],
+      "example": "bitmex market composite-index --symbol .BXBT -o json"
+    },
+    {
+      "name": "market usd-volume",
+      "command": "bitmex market usd-volume",
+      "group": "market",
+      "description": "Get USD volume for instruments.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false}
+      ],
+      "example": "bitmex market usd-volume -o json"
+    },
+    {
+      "name": "order buy",
+      "command": "bitmex order buy <symbol> <qty>",
+      "group": "order",
+      "description": "[DANGEROUS] Place a buy order.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "qty", "type": "number", "required": true},
+        {"name": "order_type", "type": "string", "required": false, "default": "Limit"},
+        {"name": "price", "type": "number", "required": false},
+        {"name": "tif", "type": "string", "required": false},
+        {"name": "exec_inst", "type": "string", "required": false},
+        {"name": "validate", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex order buy XBTUSD 100 --price 50000 -o json"
+    },
+    {
+      "name": "order sell",
+      "command": "bitmex order sell <symbol> <qty>",
+      "group": "order",
+      "description": "[DANGEROUS] Place a sell order.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "qty", "type": "number", "required": true},
+        {"name": "order_type", "type": "string", "required": false, "default": "Limit"},
+        {"name": "price", "type": "number", "required": false},
+        {"name": "validate", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex order sell XBTUSD 100 --price 50000 -o json"
+    },
+    {
+      "name": "order amend",
+      "command": "bitmex order amend",
+      "group": "order",
+      "description": "[DANGEROUS] Amend an existing order.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "order_id", "type": "string", "required": false},
+        {"name": "price", "type": "number", "required": false},
+        {"name": "qty", "type": "number", "required": false}
+      ],
+      "example": "bitmex order amend --order-id abc123 --price 51000 -o json"
+    },
+    {
+      "name": "order cancel",
+      "command": "bitmex order cancel",
+      "group": "order",
+      "description": "[DANGEROUS] Cancel one or more orders.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "order_id", "type": "string", "required": false},
+        {"name": "cl_ord_id", "type": "string", "required": false}
+      ],
+      "example": "bitmex order cancel --order-id abc123 -o json"
+    },
+    {
+      "name": "order cancel-all",
+      "command": "bitmex order cancel-all",
+      "group": "order",
+      "description": "[DANGEROUS] Cancel all open orders.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false}
+      ],
+      "example": "bitmex order cancel-all --symbol XBTUSD -o json"
+    },
+    {
+      "name": "order cancel-after",
+      "command": "bitmex order cancel-after <timeout>",
+      "group": "order",
+      "description": "[DANGEROUS] Dead Man's Switch: cancel all orders after timeout (ms).",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "timeout", "type": "integer", "required": true}
+      ],
+      "example": "bitmex order cancel-after 60000 -o json"
+    },
+    {
+      "name": "order close-position",
+      "command": "bitmex order close-position <symbol>",
+      "group": "order",
+      "description": "[DANGEROUS] Close a position with a market order.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "price", "type": "number", "required": false}
+      ],
+      "example": "bitmex order close-position XBTUSD -o json"
+    },
+    {
+      "name": "order list",
+      "command": "bitmex order list",
+      "group": "order",
+      "description": "List open orders.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex order list --symbol XBTUSD -o json"
+    },
+    {
+      "name": "position list",
+      "command": "bitmex position list",
+      "group": "position",
+      "description": "List open positions.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false}
+      ],
+      "example": "bitmex position list -o json"
+    },
+    {
+      "name": "position leverage",
+      "command": "bitmex position leverage <symbol> <leverage>",
+      "group": "position",
+      "description": "[DANGEROUS] Set leverage for isolated margin.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "leverage", "type": "number", "required": true}
+      ],
+      "example": "bitmex position leverage XBTUSD 10 -o json"
+    },
+    {
+      "name": "position isolate",
+      "command": "bitmex position isolate <symbol>",
+      "group": "position",
+      "description": "[DANGEROUS] Toggle isolated/cross margin mode.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "enabled", "type": "boolean", "required": true}
+      ],
+      "example": "bitmex position isolate XBTUSD --enabled -o json"
+    },
+    {
+      "name": "position transfer-margin",
+      "command": "bitmex position transfer-margin <symbol> <amount>",
+      "group": "position",
+      "description": "[DANGEROUS] Transfer margin in/out of a position.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "amount", "type": "integer", "required": true}
+      ],
+      "example": "bitmex position transfer-margin XBTUSD 100000 -o json"
+    },
+    {
+      "name": "position risk-limit",
+      "command": "bitmex position risk-limit <symbol> <risk_limit>",
+      "group": "position",
+      "description": "[DANGEROUS] Set risk limit.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "risk_limit", "type": "integer", "required": true}
+      ],
+      "example": "bitmex position risk-limit XBTUSD 20000000000 -o json"
+    },
+    {
+      "name": "position cross-leverage",
+      "command": "bitmex position cross-leverage <symbol> <cross_leverage>",
+      "group": "position",
+      "description": "[DANGEROUS] Set cross leverage.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "cross_leverage", "type": "number", "required": true}
+      ],
+      "example": "bitmex position cross-leverage XBTUSD 5 -o json"
+    },
+    {
+      "name": "execution list",
+      "command": "bitmex execution list",
+      "group": "execution",
+      "description": "Get raw execution (fill) history.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex execution list --symbol XBTUSD -o json"
+    },
+    {
+      "name": "execution trade-history",
+      "command": "bitmex execution trade-history",
+      "group": "execution",
+      "description": "Get trade history with realised PnL.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex execution trade-history -o json"
+    },
+    {
+      "name": "wallet balance",
+      "command": "bitmex wallet balance",
+      "group": "wallet",
+      "description": "Show wallet balance.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false}
+      ],
+      "example": "bitmex wallet balance -o json"
+    },
+    {
+      "name": "wallet history",
+      "command": "bitmex wallet history",
+      "group": "wallet",
+      "description": "Show wallet transaction history.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex wallet history -o json"
+    },
+    {
+      "name": "wallet summary",
+      "command": "bitmex wallet summary",
+      "group": "wallet",
+      "description": "Show wallet summary.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false}
+      ],
+      "example": "bitmex wallet summary -o json"
+    },
+    {
+      "name": "wallet deposit",
+      "command": "bitmex wallet deposit",
+      "group": "wallet",
+      "description": "Get deposit address.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false, "default": "XBt"},
+        {"name": "network", "type": "string", "required": false}
+      ],
+      "example": "bitmex wallet deposit --currency XBt -o json"
+    },
+    {
+      "name": "wallet withdraw",
+      "command": "bitmex wallet withdraw",
+      "group": "wallet",
+      "description": "[DANGEROUS] Request a withdrawal.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": true},
+        {"name": "network", "type": "string", "required": true},
+        {"name": "address", "type": "string", "required": true},
+        {"name": "amount", "type": "integer", "required": true},
+        {"name": "otp", "type": "string", "required": false}
+      ],
+      "example": "bitmex wallet withdraw --currency XBt --network Bitcoin --address bc1q... --amount 100000 -o json"
+    },
+    {
+      "name": "wallet transfer",
+      "command": "bitmex wallet transfer",
+      "group": "wallet",
+      "description": "[DANGEROUS] Transfer between accounts.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": true},
+        {"name": "amount", "type": "integer", "required": true},
+        {"name": "to_user_id", "type": "integer", "required": false}
+      ],
+      "example": "bitmex wallet transfer --currency XBt --amount 100000 -o json"
+    },
+    {
+      "name": "wallet assets",
+      "command": "bitmex wallet assets",
+      "group": "wallet",
+      "description": "List supported wallet assets.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex wallet assets -o json"
+    },
+    {
+      "name": "wallet networks",
+      "command": "bitmex wallet networks",
+      "group": "wallet",
+      "description": "List supported wallet networks.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex wallet networks -o json"
+    },
+    {
+      "name": "wallet haircuts",
+      "command": "bitmex wallet haircuts",
+      "group": "wallet",
+      "description": "List haircut rates.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex wallet haircuts -o json"
+    },
+    {
+      "name": "wallet cancel-withdraw",
+      "command": "bitmex wallet cancel-withdraw <token>",
+      "group": "wallet",
+      "description": "[DANGEROUS] Cancel a pending withdrawal.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "token", "type": "string", "required": true}
+      ],
+      "example": "bitmex wallet cancel-withdraw TOKEN -o json"
+    },
+    {
+      "name": "wallet confirm-withdraw",
+      "command": "bitmex wallet confirm-withdraw <token>",
+      "group": "wallet",
+      "description": "Confirm a withdrawal.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "token", "type": "string", "required": true}
+      ],
+      "example": "bitmex wallet confirm-withdraw TOKEN -o json"
+    },
+    {
+      "name": "wallet deposit-info",
+      "command": "bitmex wallet deposit-info",
+      "group": "wallet",
+      "description": "Get detailed deposit address information.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false},
+        {"name": "network", "type": "string", "required": false}
+      ],
+      "example": "bitmex wallet deposit-info --currency XBt -o json"
+    },
+    {
+      "name": "wallet transfer-accounts",
+      "command": "bitmex wallet transfer-accounts",
+      "group": "wallet",
+      "description": "List accounts available for transfer.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex wallet transfer-accounts -o json"
+    },
+    {
+      "name": "staking status",
+      "command": "bitmex staking status",
+      "group": "staking",
+      "description": "Show staking positions.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex staking status -o json"
+    },
+    {
+      "name": "staking instruments",
+      "command": "bitmex staking instruments",
+      "group": "staking",
+      "description": "List stakeable instruments.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex staking instruments -o json"
+    },
+    {
+      "name": "staking pending-unstake",
+      "command": "bitmex staking pending-unstake",
+      "group": "staking",
+      "description": "List pending unstaking requests.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex staking pending-unstake -o json"
+    },
+    {
+      "name": "staking unstake",
+      "command": "bitmex staking unstake <symbol> <amount>",
+      "group": "staking",
+      "description": "[DANGEROUS] Request to unstake.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "amount", "type": "integer", "required": true}
+      ],
+      "example": "bitmex staking unstake XBTUSDT 100 -o json"
+    },
+    {
+      "name": "staking cancel-unstake",
+      "command": "bitmex staking cancel-unstake <request_id>",
+      "group": "staking",
+      "description": "[DANGEROUS] Cancel an unstaking request.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "request_id", "type": "string", "required": true}
+      ],
+      "example": "bitmex staking cancel-unstake abc123 -o json"
+    },
+    {
+      "name": "account me",
+      "command": "bitmex account me",
+      "group": "account",
+      "description": "Show user profile.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex account me -o json"
+    },
+    {
+      "name": "account margin",
+      "command": "bitmex account margin",
+      "group": "account",
+      "description": "Show margin state.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": false}
+      ],
+      "example": "bitmex account margin -o json"
+    },
+    {
+      "name": "account commission",
+      "command": "bitmex account commission",
+      "group": "account",
+      "description": "Show commission rates.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex account commission -o json"
+    },
+    {
+      "name": "account affiliate",
+      "command": "bitmex account affiliate",
+      "group": "account",
+      "description": "Show affiliate status.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex account affiliate -o json"
+    },
+    {
+      "name": "account volume",
+      "command": "bitmex account volume",
+      "group": "account",
+      "description": "Show 30-day trading volume.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex account volume -o json"
+    },
+    {
+      "name": "account csa",
+      "command": "bitmex account csa",
+      "group": "account",
+      "description": "Show CSA (crypto-settled account) info.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex account csa -o json"
+    },
+    {
+      "name": "account execution-history",
+      "command": "bitmex account execution-history",
+      "group": "account",
+      "description": "Show recent execution history (user-scoped).",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": false},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex account execution-history -o json"
+    },
+    {
+      "name": "account preferences",
+      "command": "bitmex account preferences",
+      "group": "account",
+      "description": "[DANGEROUS] Update account preferences.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "prefs", "type": "string", "required": true}
+      ],
+      "example": "bitmex account preferences --prefs '{\"locale\":\"en-US\"}' -o json"
+    },
+    {
+      "name": "account margining-mode",
+      "command": "bitmex account margining-mode <mode>",
+      "group": "account",
+      "description": "[DANGEROUS] Set margining mode.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "mode", "type": "string", "required": true},
+        {"name": "currency", "type": "string", "required": false}
+      ],
+      "example": "bitmex account margining-mode REGULAR_MARGIN -o json"
+    },
+    {
+      "name": "account quote-fill-ratio",
+      "command": "bitmex account quote-fill-ratio",
+      "group": "account",
+      "description": "Show quote fill ratio.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex account quote-fill-ratio -o json"
+    },
+    {
+      "name": "subaccount add",
+      "command": "bitmex subaccount add <account_name>",
+      "group": "subaccount",
+      "description": "[DANGEROUS] Add a subaccount.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "account_name", "type": "string", "required": true}
+      ],
+      "example": "bitmex subaccount add mybot -o json"
+    },
+    {
+      "name": "subaccount create-independent",
+      "command": "bitmex subaccount create-independent <account_name>",
+      "group": "subaccount",
+      "description": "[DANGEROUS] Create an independent subaccount.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "account_name", "type": "string", "required": true}
+      ],
+      "example": "bitmex subaccount create-independent mybot2 -o json"
+    },
+    {
+      "name": "subaccount update",
+      "command": "bitmex subaccount update <account_id>",
+      "group": "subaccount",
+      "description": "Update a subaccount.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "account_id", "type": "integer", "required": true},
+        {"name": "account_name", "type": "string", "required": false}
+      ],
+      "example": "bitmex subaccount update 12345 --account-name newname -o json"
+    },
+    {
+      "name": "subaccount transfer-accounts",
+      "command": "bitmex subaccount transfer-accounts",
+      "group": "subaccount",
+      "description": "List accounts eligible for wallet transfer.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex subaccount transfer-accounts -o json"
+    },
+    {
+      "name": "api-key list",
+      "command": "bitmex api-key list",
+      "group": "apikey",
+      "description": "List all API keys for the account.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex api-key list -o json"
+    },
+    {
+      "name": "api-key me",
+      "command": "bitmex api-key me",
+      "group": "apikey",
+      "description": "Show info about the current API key.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex api-key me -o json"
+    },
+    {
+      "name": "chat read",
+      "command": "bitmex chat read",
+      "group": "chat",
+      "description": "Read chat messages.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "channel_id", "type": "number", "required": false, "default": 1},
+        {"name": "count", "type": "integer", "required": false, "default": 100}
+      ],
+      "example": "bitmex chat read -o json"
+    },
+    {
+      "name": "chat post",
+      "command": "bitmex chat post <message>",
+      "group": "chat",
+      "description": "[DANGEROUS] Post a message to chat.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "message", "type": "string", "required": true},
+        {"name": "channel_id", "type": "number", "required": false, "default": 1}
+      ],
+      "example": "bitmex chat post \"Hello world\" -o json"
+    },
+    {
+      "name": "chat channels",
+      "command": "bitmex chat channels",
+      "group": "chat",
+      "description": "List available channels.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex chat channels -o json"
+    },
+    {
+      "name": "chat connected",
+      "command": "bitmex chat connected",
+      "group": "chat",
+      "description": "List connected users.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex chat connected -o json"
+    },
+    {
+      "name": "chat pinned",
+      "command": "bitmex chat pinned",
+      "group": "chat",
+      "description": "Show pinned message.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex chat pinned -o json"
+    },
+    {
+      "name": "guild info",
+      "command": "bitmex guild info",
+      "group": "guild",
+      "description": "Show guild info.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex guild info -o json"
+    },
+    {
+      "name": "guild join",
+      "command": "bitmex guild join <code>",
+      "group": "guild",
+      "description": "[DANGEROUS] Join a guild by share code.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "code", "type": "string", "required": true}
+      ],
+      "example": "bitmex guild join ABC123 -o json"
+    },
+    {
+      "name": "guild leave",
+      "command": "bitmex guild leave",
+      "group": "guild",
+      "description": "[DANGEROUS] Leave your current guild.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [],
+      "example": "bitmex guild leave -o json"
+    },
+    {
+      "name": "bots strategies",
+      "command": "bitmex bots strategies",
+      "group": "bots",
+      "description": "List available bot strategies.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex bots strategies -o json"
+    },
+    {
+      "name": "bots instances",
+      "command": "bitmex bots instances",
+      "group": "bots",
+      "description": "List your bot instances.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex bots instances -o json"
+    },
+    {
+      "name": "bots marketplace",
+      "command": "bitmex bots marketplace",
+      "group": "bots",
+      "description": "Browse the bot marketplace.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex bots marketplace -o json"
+    },
+    {
+      "name": "notifications global",
+      "command": "bitmex notifications global",
+      "group": "notifications",
+      "description": "Show global site notifications.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex notifications global -o json"
+    },
+    {
+      "name": "notifications alerts",
+      "command": "bitmex notifications alerts",
+      "group": "notifications",
+      "description": "List price alerts.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex notifications alerts -o json"
+    },
+    {
+      "name": "notifications add-alert",
+      "command": "bitmex notifications add-alert <symbol> <price>",
+      "group": "notifications",
+      "description": "[DANGEROUS] Create a price alert.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "price", "type": "number", "required": true},
+        {"name": "above", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex notifications add-alert XBTUSD 50000 --above -o json"
+    },
+    {
+      "name": "notifications delete-alert",
+      "command": "bitmex notifications delete-alert <id>",
+      "group": "notifications",
+      "description": "[DANGEROUS] Delete a price alert.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "id", "type": "integer", "required": true}
+      ],
+      "example": "bitmex notifications delete-alert 123 -o json"
+    },
+    {
+      "name": "address list",
+      "command": "bitmex address list",
+      "group": "address",
+      "description": "List saved withdrawal addresses.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex address list -o json"
+    },
+    {
+      "name": "address add",
+      "command": "bitmex address add <currency> <network> <address>",
+      "group": "address",
+      "description": "[DANGEROUS] Add a withdrawal address.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "currency", "type": "string", "required": true},
+        {"name": "network", "type": "string", "required": true},
+        {"name": "address", "type": "string", "required": true},
+        {"name": "name", "type": "string", "required": false}
+      ],
+      "example": "bitmex address add XBt Bitcoin bc1q... --name mywallet -o json"
+    },
+    {
+      "name": "referral list",
+      "command": "bitmex referral list",
+      "group": "referral",
+      "description": "List your referral codes.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex referral list -o json"
+    },
+    {
+      "name": "referral check",
+      "command": "bitmex referral check <code>",
+      "group": "referral",
+      "description": "Check if a referral code is valid.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [
+        {"name": "code", "type": "string", "required": true}
+      ],
+      "example": "bitmex referral check MYCODE -o json"
+    },
+    {
+      "name": "porl nonce",
+      "command": "bitmex porl nonce",
+      "group": "porl",
+      "description": "Get a PoRL nonce for proof of reserves verification.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex porl nonce -o json"
+    },
+    {
+      "name": "porl snapshots",
+      "command": "bitmex porl snapshots",
+      "group": "porl",
+      "description": "List PoRL snapshots.",
+      "auth_required": true,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex porl snapshots -o json"
+    },
+    {
+      "name": "announce list",
+      "command": "bitmex announce list",
+      "group": "announce",
+      "description": "List site announcements.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex announce list -o json"
+    },
+    {
+      "name": "announce urgent",
+      "command": "bitmex announce urgent",
+      "group": "announce",
+      "description": "List urgent announcements.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex announce urgent -o json"
+    },
+    {
+      "name": "auth set",
+      "command": "bitmex auth set",
+      "group": "auth",
+      "description": "Save API credentials to the config file.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [
+        {"name": "api_key", "type": "string", "required": true},
+        {"name": "api_secret", "type": "string", "required": false}
+      ],
+      "example": "bitmex auth set --api-key MYKEY"
+    },
+    {
+      "name": "auth show",
+      "command": "bitmex auth show",
+      "group": "auth",
+      "description": "Show currently configured credentials (secrets are masked).",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex auth show -o json"
+    },
+    {
+      "name": "auth reset",
+      "command": "bitmex auth reset",
+      "group": "auth",
+      "description": "Remove stored credentials from the config file.",
+      "auth_required": false,
+      "dangerous": false,
+      "parameters": [],
+      "example": "bitmex auth reset"
+    }
+  ]
+}

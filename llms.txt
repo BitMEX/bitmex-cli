@@ -1,0 +1,31 @@
+# bitmex-cli
+
+Agent-first CLI for trading crypto, stocks, forex, and derivatives on BitMEX with structured JSON output.
+
+## Install
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/BitMEX/bitmex-cli/master/install.sh | sh
+```
+
+Pre-built binary for macOS and Linux. No Rust needed.
+
+## Start Here
+
+- [CONTEXT.md](CONTEXT.md): Runtime context for tool-using agents
+- [AGENTS.md](AGENTS.md): Full integration guide for agent builders
+- [CLAUDE.md](CLAUDE.md): Anthropic-specific guidance
+
+## Machine Contracts
+
+- [agents/tool-catalog.json](agents/tool-catalog.json): Canonical command catalog (134 commands, with parameter schemas and `dangerous` flags)
+- [agents/error-catalog.json](agents/error-catalog.json): Error categories and retry guidance
+
+## Workflow Skills
+
+- [skills/](skills/): Goal-oriented SKILL.md packages for execution, market intel, paper testing, and risk operations
+
+## Notes
+
+- `tool-catalog.json` is the single source of truth for command discovery.
+- `bitmex mcp -s market,trade,paper` starts a built-in MCP server over stdio for direct agent integration.

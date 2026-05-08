@@ -1,0 +1,22 @@
+/// Command modules for each functional group of the BitMEX CLI.
+pub(crate) mod account;
+pub(crate) mod address;
+pub(crate) mod announce;
+pub(crate) mod apikey;
+pub(crate) mod auth;
+pub(crate) mod bots;
+pub(crate) mod chat;
+pub(crate) mod execution;
+pub(crate) mod guild;
+pub(crate) mod helpers;
+pub(crate) mod market;
+pub(crate) mod notifications;
+pub(crate) mod order;
+pub(crate) mod porl;
+pub(crate) mod position;
+pub(crate) mod referral;
+pub(crate) mod staking;
+pub(crate) mod subaccount;
+pub(crate) mod utility;
+pub(crate) mod wallet;
+pub(crate) mod ws;
