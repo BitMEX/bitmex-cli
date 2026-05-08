@@ -191,7 +191,7 @@ pub(crate) fn save(cfg: &BitmexConfig) -> Result<()> {
 // Auto-migration
 // ---------------------------------------------------------------------------
 
-fn maybe_migrate_legacy_auth(cfg: &mut BitmexConfig, path: &Path) -> Result<()> {
+fn maybe_migrate_legacy_auth(cfg: &mut BitmexConfig, _path: &Path) -> Result<()> {
     let (Some(key), Some(secret)) = (
         cfg.auth.api_key.take(),
         cfg.auth.api_secret.take(),

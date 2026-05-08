@@ -22,9 +22,3 @@ pub(crate) fn render(output: &CommandOutput) {
 
     println!("{table}");
 }
-
-/// Render a single append-only line for WebSocket streaming in table mode.
-pub(crate) fn render_stream_line(fields: &[(&str, &str)]) {
-    let parts: Vec<String> = fields.iter().map(|(k, v)| format!("{k}: {v}")).collect();
-    println!("{}", parts.join("  |  "));
-}

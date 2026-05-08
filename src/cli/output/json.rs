@@ -26,14 +26,3 @@ pub(crate) fn render_error(err: &BitmexError) {
         }
     }
 }
-
-/// Render a single NDJSON line to stdout (for WebSocket streaming).
-pub(crate) fn render_ndjson(data: &serde_json::Value) {
-    match serde_json::to_string(data) {
-        Ok(s) => println!("{s}"),
-        Err(e) => {
-            eprintln!("JSON serialization failed: {e}");
-            println!(r#"{{"error":"parse","message":"JSON serialization failed"}}"#);
-        }
-    }
-}

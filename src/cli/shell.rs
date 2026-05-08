@@ -120,26 +120,26 @@ pub(crate) async fn run(ctx: &AppContext) -> Result<()> {
 struct BitmexPrompt;
 
 impl Prompt for BitmexPrompt {
-    fn render_prompt_left(&self) -> Cow<str> {
+    fn render_prompt_left(&self) -> Cow<'_, str> {
         "bitmex> ".into()
     }
 
-    fn render_prompt_right(&self) -> Cow<str> {
+    fn render_prompt_right(&self) -> Cow<'_, str> {
         "".into()
     }
 
-    fn render_prompt_indicator(&self, _mode: PromptEditMode) -> Cow<str> {
+    fn render_prompt_indicator(&self, _mode: PromptEditMode) -> Cow<'_, str> {
         "".into()
     }
 
-    fn render_prompt_multiline_indicator(&self) -> Cow<str> {
+    fn render_prompt_multiline_indicator(&self) -> Cow<'_, str> {
         "... ".into()
     }
 
     fn render_prompt_history_search_indicator(
         &self,
         _history_search: PromptHistorySearch,
-    ) -> Cow<str> {
+    ) -> Cow<'_, str> {
         "(history-search) ".into()
     }
 }
@@ -184,7 +184,7 @@ struct BitmexHighlighter;
 
 impl Highlighter for BitmexHighlighter {
     fn highlight(&self, line: &str, _cursor: usize) -> StyledText {
-        use nu_ansi_term::{Color, Style};
+        use nu_ansi_term::Style;
 
         let mut styled = StyledText::new();
         if line.is_empty() {

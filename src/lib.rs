@@ -241,7 +241,7 @@ pub enum Command {
 
 fn build_client(ctx: &AppContext) -> Result<BitmexClient> {
     if let Some(ref url) = ctx.api_url {
-        BitmexClient::new_with_url(url.clone(), ctx.testnet, ctx.verbose, ctx.timing)
+        BitmexClient::new_with_url(url.clone(), ctx.verbose, ctx.timing)
     } else {
         BitmexClient::new(ctx.testnet, ctx.verbose, ctx.timing)
     }

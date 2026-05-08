@@ -37,36 +37,9 @@ impl CommandOutput {
     ///
     /// // Explicit columns (replaces from_json_cols):
     /// CommandOutput::builder().data(val).columns(&["price", "size"]).build()
-    ///
-    /// // Fixed message:
-    /// CommandOutput::builder().message("Done").build()
     /// ```
     pub(crate) fn builder() -> CommandOutputBuilder {
         CommandOutputBuilder::default()
-    }
-
-    /// Create output from a JSON value with explicit table structure.
-    pub(crate) fn new(
-        data: serde_json::Value,
-        headers: Vec<String>,
-        rows: Vec<Vec<String>>,
-    ) -> Self {
-        Self {
-            data,
-            headers,
-            rows,
-        }
-    }
-
-    /// Create a simple key-value output (rendered as two-column table).
-    pub(crate) fn key_value(pairs: Vec<(String, String)>, json_data: serde_json::Value) -> Self {
-        let headers = vec!["Field".to_string(), "Value".to_string()];
-        let rows: Vec<Vec<String>> = pairs.into_iter().map(|(k, v)| vec![k, v]).collect();
-        Self {
-            data: json_data,
-            headers,
-            rows,
-        }
     }
 
     /// Create output from a raw JSON value, auto-populating table rows from the data.
@@ -196,11 +169,10 @@ impl CommandOutput {
 pub(crate) struct CommandOutputBuilder {
     data: Option<serde_json::Value>,
     columns: Option<Vec<String>>,
-    message: Option<String>,
 }
 
 impl CommandOutputBuilder {
-    /// Set the JSON payload. Required unless `.message()` is used.
+    /// Set the JSON payload.
     pub(crate) fn data(mut self, data: serde_json::Value) -> Self {
         self.data = Some(data);
         self
@@ -212,17 +184,8 @@ impl CommandOutputBuilder {
         self
     }
 
-    /// Produce a single-message output (sets data to `{"message": msg}`).
-    pub(crate) fn message(mut self, msg: impl Into<String>) -> Self {
-        self.message = Some(msg.into());
-        self
-    }
-
     /// Consume the builder and produce a `CommandOutput`.
     pub(crate) fn build(self) -> CommandOutput {
-        if let Some(msg) = self.message {
-            return CommandOutput::message(&msg);
-        }
         match (self.data, self.columns) {
             (Some(data), Some(cols)) => {
                 let col_refs: Vec<&str> = cols.iter().map(|s| s.as_str()).collect();

@@ -53,8 +53,6 @@ pub trait ExchangeClient: Send + Sync {
         body: Option<&Value>,
         creds: &Credentials,
     ) -> impl Future<Output = Result<Value>> + Send;
-    fn base_url(&self) -> &str;
-    fn is_testnet(&self) -> bool;
 }
 
 use std::future::Future;
@@ -63,7 +61,6 @@ use std::future::Future;
 pub struct BitmexClient {
     http: reqwest::Client,
     pub(crate) base_url: String,
-    pub(crate) testnet: bool,
     verbose: bool,
     /// When Some, timing phases are collected and printed for every request.
     timing: Option<super::timing::TimingHandle>,
@@ -114,19 +111,17 @@ impl BitmexClient {
         Ok(Self {
             http: build_http_client(timing_handle.as_ref())?,
             base_url,
-            testnet,
             verbose,
             timing: timing_handle,
         })
     }
 
     /// Create a new client with an explicit base URL override.
-    pub fn new_with_url(base_url: String, testnet: bool, verbose: bool, timing: bool) -> Result<Self> {
+    pub fn new_with_url(base_url: String, verbose: bool, timing: bool) -> Result<Self> {
         let timing_handle = timing.then(super::timing::new_handle);
         Ok(Self {
             http: build_http_client(timing_handle.as_ref())?,
             base_url,
-            testnet,
             verbose,
             timing: timing_handle,
         })
@@ -200,25 +195,6 @@ impl BitmexClient {
                 .map_err(|e| BitmexError::Network { message: e.to_string() })
         }).await?;
         self.parse_response(resp, "PUT", &url).await
-    }
-
-    /// Authenticated PATCH with JSON body.
-    pub async fn patch(&self, path: &str, body: &Value, creds: &Credentials) -> Result<Value> {
-        let full_path = format!("/api/v1{path}");
-        let body_str = serde_json::to_string(body)?;
-        let url = self.url(path, "");
-        if self.verbose { crate::cli::output::verbose(&format!("PATCH {url}")); }
-        self.begin_request();
-        let resp = super::middleware::execute_with_retry(self.verbose, || async {
-            let expires = auth::generate_expires()?;
-            let sig = auth::sign("PATCH", &full_path, expires, &body_str, &creds.api_secret)?;
-            let headers = self.auth_headers(&creds.api_key, expires, &sig)?;
-            self.http.patch(&url).headers(headers)
-                .header("Content-Type", "application/json")
-                .body(body_str.clone()).send().await
-                .map_err(|e| BitmexError::Network { message: e.to_string() })
-        }).await?;
-        self.parse_response(resp, "PATCH", &url).await
     }
 
     /// Authenticated DELETE, optional JSON body.
@@ -412,14 +388,6 @@ impl ExchangeClient for BitmexClient {
         creds: &Credentials,
     ) -> Result<Value> {
         BitmexClient::delete(self, path, query, body, creds).await
-    }
-
-    fn base_url(&self) -> &str {
-        &self.base_url
-    }
-
-    fn is_testnet(&self) -> bool {
-        self.testnet
     }
 }
 
