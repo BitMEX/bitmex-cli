@@ -23,3 +23,5 @@ install-path = "CARGO_HOME"
 install-updater = false
 # macOS code signing (uses APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_TEAM_ID secrets)
 macos-sign = true
+# CI file has custom secret name mappings, opt out of dist's staleness check
+allow-dirty = ["ci"]
