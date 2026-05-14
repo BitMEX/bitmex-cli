@@ -95,13 +95,7 @@ install_skills() {
 main() {
   target=$(get_target)
 
-  # TEMP: pre-launch, repo is private — use `gh` for auth.
-  # Revert this block to the curl version (see git history) once public.
-  if ! command -v gh >/dev/null 2>&1; then
-    echo "Error: 'gh' CLI required for pre-launch install (repo is private)" >&2
-    exit 1
-  fi
-  tag=$(gh release view --repo "$REPO" --json tagName --jq .tagName)
+  tag=$(curl -sSfL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
   if [ -z "$tag" ]; then
     echo "Error: could not determine latest release" >&2
     exit 1
@@ -116,10 +110,8 @@ main() {
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' EXIT
 
-  # TEMP: pre-launch, use `gh release download` instead of curl.
-  gh release download "$tag" --repo "$REPO" \
-    --pattern "$tarball" --pattern "$checksums" \
-    --dir "$tmpdir" >/dev/null
+  curl -sSfL "https://github.com/${REPO}/releases/download/${tag}/${tarball}" -o "$tmpdir/$tarball"
+  curl -sSfL "https://github.com/${REPO}/releases/download/${tag}/${checksums}" -o "$tmpdir/$checksums"
 
   expected_hash=$(grep "$tarball" "$tmpdir/$checksums" | awk '{print $1}')
   if [ -z "$expected_hash" ]; then
@@ -173,9 +165,7 @@ main() {
 
   # Install skills (non-fatal if it fails)
   src_tarball="$tmpdir/source.tar.gz"
-  # TEMP: use gh api for private repo. When public, replace with:
-  #   curl -sSfL "https://github.com/${REPO}/archive/refs/tags/${tag}.tar.gz" -o "$src_tarball"
-  if gh api "repos/${REPO}/tarball/${tag}" > "$src_tarball" 2>/dev/null; then
+  if curl -sSfL "https://github.com/${REPO}/archive/refs/tags/${tag}.tar.gz" -o "$src_tarball" 2>/dev/null; then
     install_skills "$src_tarball" || echo "Warning: skill installation failed (skipping)"
   else
     echo ""
