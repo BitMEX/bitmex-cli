@@ -26,5 +26,5 @@ macos-sign = true
 # CI file has custom secret name mappings, opt out of dist's staleness check
 allow-dirty = ["ci"]
 
-[dist.dependencies]
-apt = ["libdbus-1-dev"]
+[dist.dependencies.apt]
+libdbus-1-dev = "*"
