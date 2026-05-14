@@ -17,8 +17,6 @@ pr-run-mode = "plan"
 unix-archive = ".tar.gz"
 # Whether to enable GitHub Attestations
 github-attestations = true
-# Skip checking whether the specified configuration files are up to date
-allow-dirty = ["ci"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
 # Whether to install an updater program
