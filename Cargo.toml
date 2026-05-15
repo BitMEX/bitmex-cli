@@ -1,6 +1,6 @@
 [package]
 name = "bitmex-cli"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.2"
 edition = "2024"
 description = "BitMEX CLI — trade, query, and manage your BitMEX account from the terminal"
 license = "MIT"
