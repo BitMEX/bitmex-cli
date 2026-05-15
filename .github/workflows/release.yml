@@ -117,7 +117,7 @@ jobs:
       CODESIGN_IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
       APPLE_NOTARIZE_ID: ${{ secrets.APPLE_NOTARIZE_ID }}
       APPLE_NOTARIZE_PASSWORD: ${{ secrets.APPLE_NOTARIZE_PASSWORD }}
-      APPLE_NOTARIZE_TEAM_ID: ${{ secrets.APPLE_NOTARIZE_TEAM_ID }}
+      APPLE_NOTARIZE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     permissions:
       "attestations": "write"
       "contents": "read"
