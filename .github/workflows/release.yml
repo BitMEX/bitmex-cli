@@ -115,6 +115,9 @@ jobs:
       CODESIGN_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       CODESIGN_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       CODESIGN_IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
+      APPLE_NOTARIZE_ID: ${{ secrets.APPLE_NOTARIZE_ID }}
+      APPLE_NOTARIZE_PASSWORD: ${{ secrets.APPLE_NOTARIZE_PASSWORD }}
+      APPLE_NOTARIZE_TEAM_ID: ${{ secrets.APPLE_NOTARIZE_TEAM_ID }}
     permissions:
       "attestations": "write"
       "contents": "read"
@@ -155,6 +158,18 @@ jobs:
           # Actually do builds and make zips and whatnot
           dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
           echo "dist ran successfully"
+      - name: Notarize macOS binary
+        if: ${{ contains(join(matrix.targets, ','), 'apple-darwin') && needs.plan.outputs.publishing == 'true' }}
+        shell: bash
+        run: |
+          binary=$(find target/dist -name "bitmex" -not -path "*/build/*" -not -path "*/deps/*" | head -1)
+          zip_path="${binary}.zip"
+          ditto -c -k --keepParent "$binary" "$zip_path"
+          xcrun notarytool submit "$zip_path" \
+            --apple-id "$APPLE_NOTARIZE_ID" \
+            --password "$APPLE_NOTARIZE_PASSWORD" \
+            --team-id "$APPLE_NOTARIZE_TEAM_ID" \
+            --wait
       - name: Attest
         uses: actions/attest-build-provenance@v3
         with:
