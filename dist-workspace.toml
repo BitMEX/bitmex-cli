@@ -17,9 +17,17 @@ pr-run-mode = "plan"
 unix-archive = ".tar.gz"
 # Whether to enable GitHub Attestations
 github-attestations = true
-# Skip checking whether the specified configuration files are up to date
-allow-dirty = ["ci"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
 # Whether to install an updater program
 install-updater = false
+# macOS code signing (uses APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_TEAM_ID secrets)
+macos-sign = true
+# CI file has custom secret name mappings, opt out of dist's staleness check
+allow-dirty = ["ci"]
+
+[dist.dependencies.apt]
+libdbus-1-dev = "*"
+
+[dist.github-custom-runners]
+aarch64-apple-darwin = "macos-15"
