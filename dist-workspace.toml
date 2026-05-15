@@ -28,3 +28,6 @@ allow-dirty = ["ci"]
 
 [dist.dependencies.apt]
 libdbus-1-dev = "*"
+
+[dist.github-custom-runners]
+aarch64-apple-darwin = "macos-15"
