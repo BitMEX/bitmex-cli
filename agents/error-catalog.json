@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0.0",
+  "cli_version": "0.1.0",
+  "description": "Error categories emitted by bitmex-cli. Agents should route on the error field, not message strings.",
+  "envelope_format": {
+    "fields": {
+      "error": "Error category string (matches a category below)",
+      "message": "Human-readable error detail (not stable, do not parse)"
+    },
+    "extended_fields": {
+      "applies_to": "rate_limit",
+      "suggestion": "Actionable guidance: tier limits, per-endpoint costs, recommended alternatives",
+      "retryable": "Boolean indicating the agent may retry after adjusting behavior",
+      "docs_url": "Link to the relevant BitMEX rate limit documentation page"
+    },
+    "example": {"error": "auth", "message": "Authentication failed: EAPI:Invalid key"},
+    "example_rate_limit": {"error": "rate_limit", "message": "Spot REST API rate limit exceeded (EAPI:Rate limit exceeded).", "suggestion": "Wait 5-15 seconds...", "retryable": true, "docs_url": "https://docs.bitmex.com/api/docs/guides/spot-rest-ratelimits/"}
+  },
+  "categories": [
+    {
+      "category": "api",
+      "description": "BitMEX API returned an application-level error (insufficient funds, unknown pair, order minimum not met).",
+      "retryable": false,
+      "agent_action": "Log the error. Fix request parameters. Do not retry the same request.",
+      "backoff_strategy": null,
+      "common_causes": ["Insufficient funds", "Unknown trading pair", "Order volume below minimum"],
+      "example_envelope": {"error": "api", "message": "EOrder:Insufficient funds"}
+    },
+    {
+      "category": "auth",
+      "description": "Authentication failed. API key invalid, expired, or lacks permissions.",
+      "retryable": false,
+      "agent_action": "Re-authenticate. Verify BITMEX_API_KEY and BITMEX_API_SECRET.",
+      "backoff_strategy": null,
+      "common_causes": ["Invalid API key", "Wrong secret", "Key lacks endpoint permission", "OTP required", "Futures authenticationError", "Futures insufficientPrivileges"],
+      "example_envelope": {"error": "auth", "message": "Authentication failed: EAPI:Invalid key"}
+    },
+    {
+      "category": "network",
+      "description": "Network-level failure. Request could not reach the BitMEX API.",
+      "retryable": true,
+      "agent_action": "Retry with exponential backoff. Check connectivity.",
+      "backoff_strategy": {"type": "exponential", "initial_delay_ms": 1000, "max_delay_ms": 30000, "max_retries": 5},
+      "common_causes": ["DNS failure", "Connection timeout", "TLS handshake failure", "Connection reset"],
+      "example_envelope": {"error": "network", "message": "Network error: error sending request"}
+    },
+    {
+      "category": "rate_limit",
+      "description": "Throttled by BitMEX's server-side rate limiter. The CLI returns this error immediately with no internal retry. The error includes a suggestion field with specific guidance and a docs_url linking to the relevant BitMEX documentation.",
+      "retryable": true,
+      "agent_action": "Read the suggestion field for tier-specific limits and recommended changes. Read docs_url for full documentation. Decide whether to retry, reduce request frequency, or switch to WebSocket streaming.",
+      "backoff_strategy": {"type": "agent_controlled", "note": "CLI does not retry rate limit errors. The agent decides retry timing based on the suggestion and docs_url fields."},
+      "common_causes": ["Too many requests (Spot REST counter)", "Short-lived orders triggering trading engine penalty", "Futures endpoint cost budget exhausted", "Too many concurrent requests (throttle)"],
+      "example_envelope": {"error": "rate_limit", "message": "Spot REST API rate limit exceeded (EAPI:Rate limit exceeded).", "suggestion": "Wait 5-15 seconds before retrying. Reduce request frequency. Use WebSocket streaming instead of REST polling for real-time data.", "retryable": true, "docs_url": "https://docs.bitmex.com/api/docs/guides/spot-rest-ratelimits/"}
+    },
+    {
+      "category": "validation",
+      "description": "Input validation failed before the request was sent.",
+      "retryable": false,
+      "agent_action": "Fix input parameters. Check types, required fields, allowed values.",
+      "backoff_strategy": null,
+      "common_causes": ["Missing required argument", "Invalid pair format", "Invalid number"],
+      "example_envelope": {"error": "validation", "message": "Validation error: Invalid URL: invalid authority"}
+    },
+    {
+      "category": "config",
+      "description": "Configuration error. Config file missing, malformed, or invalid.",
+      "retryable": false,
+      "agent_action": "Check config file. For agents, prefer environment variables.",
+      "backoff_strategy": null,
+      "common_causes": ["Invalid TOML syntax", "Missing config fields", "Missing or invalid credential values"],
+      "example_envelope": {"error": "config", "message": "Configuration error: TOML parse error"}
+    },
+    {
+      "category": "websocket",
+      "description": "WebSocket connection or protocol error.",
+      "retryable": true,
+      "agent_action": "Reconnect with backoff. CLI retries up to 12 times per stream lifecycle with paced exponential backoff and reconnect safety budgeting.",
+      "backoff_strategy": {"type": "exponential", "initial_delay_ms": 1000, "max_delay_ms": 30000, "max_retries": 12},
+      "common_causes": ["Connection dropped", "Server closed connection", "Invalid subscription", "Auth failed on private feed"],
+      "example_envelope": {"error": "websocket", "message": "WebSocket error: Connection closed unexpectedly"}
+    },
+    {
+      "category": "io",
+      "description": "File system or I/O error.",
+      "retryable": false,
+      "agent_action": "Check file paths and permissions.",
+      "backoff_strategy": null,
+      "common_causes": ["File not readable", "Directory does not exist", "Disk full", "State file corrupted"],
+      "example_envelope": {"error": "io", "message": "I/O error: Permission denied (os error 13)"}
+    },
+    {
+      "category": "parse",
+      "description": "Failed to parse API response. Response not valid JSON or unexpected structure.",
+      "retryable": false,
+      "agent_action": "Log raw response. Possible API change or maintenance. Do not retry.",
+      "backoff_strategy": null,
+      "common_causes": ["Unexpected response format", "HTML error page during maintenance", "Truncated response"],
+      "example_envelope": {"error": "parse", "message": "Parse error: expected value at line 1 column 1"}
+    }
+  ]
+}
