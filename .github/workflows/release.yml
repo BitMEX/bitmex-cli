@@ -162,10 +162,13 @@ jobs:
         if: ${{ contains(join(matrix.targets, ','), 'apple-darwin') && needs.plan.outputs.publishing == 'true' }}
         shell: bash
         run: |
-          binary=$(find target/dist -name "bitmex" -not -path "*/build/*" -not -path "*/deps/*" | head -1)
-          zip_path="${binary}.zip"
-          ditto -c -k --keepParent "$binary" "$zip_path"
-          xcrun notarytool submit "$zip_path" \
+          target="${{ join(matrix.targets, '') }}"
+          tarball="target/distrib/bitmex-cli-${target}.tar.gz"
+          tmpdir=$(mktemp -d)
+          tar xzf "$tarball" -C "$tmpdir"
+          binary="$tmpdir/bitmex-cli-${target}/bitmex"
+          ditto -c -k --keepParent "$binary" "$tmpdir/notarize.zip"
+          xcrun notarytool submit "$tmpdir/notarize.zip" \
             --apple-id "$APPLE_NOTARIZE_ID" \
             --password "$APPLE_NOTARIZE_PASSWORD" \
             --team-id "$APPLE_NOTARIZE_TEAM_ID" \
