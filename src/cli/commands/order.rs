@@ -91,12 +91,6 @@ pub(crate) enum OrderCommand {
     CancelAfter {
         timeout: u64,
     },
-    /// Close a position with a market order.
-    ClosePosition {
-        symbol: String,
-        #[arg(long)]
-        price: Option<f64>,
-    },
     /// List open (or all) orders.
     List {
         #[arg(long)]
@@ -216,16 +210,6 @@ pub(crate) async fn run(
         OrderCommand::CancelAfter { timeout } => {
             let body = json!({ "timeout": timeout });
             let val = client.post("/order/cancelAllAfter", &body, creds).await?;
-            Ok(CommandOutput::from_json(val))
-        }
-
-        OrderCommand::ClosePosition { symbol, price } => {
-            if !ctx.force {
-                confirm_destructive(&format!("Close position for {}?", symbol))?;
-            }
-            let mut body = json!({ "symbol": symbol });
-            if let Some(p) = price { body["price"] = json!(p); }
-            let val = client.post("/order/closePosition", &body, creds).await?;
             Ok(CommandOutput::from_json(val))
         }
 

@@ -292,19 +292,6 @@
       "example": "bitmex order cancel-after 60000 -o json"
     },
     {
-      "name": "order close-position",
-      "command": "bitmex order close-position <symbol>",
-      "group": "order",
-      "description": "[DANGEROUS] Close a position with a market order.",
-      "auth_required": true,
-      "dangerous": true,
-      "parameters": [
-        {"name": "symbol", "type": "string", "required": true},
-        {"name": "price", "type": "number", "required": false}
-      ],
-      "example": "bitmex order close-position XBTUSD -o json"
-    },
-    {
       "name": "order list",
       "command": "bitmex order list",
       "group": "order",
