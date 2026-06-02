@@ -131,7 +131,7 @@ fn build_order_body(
     if let Some(t) = tif { body["timeInForce"] = Value::String(t); }
     if let Some(e) = exec_inst { body["execInst"] = Value::String(e); }
     if let Some(c) = cl_ord_id { body["clOrdID"] = Value::String(c); }
-    if let Some(t) = text { body["text"] = Value::String(t); }
+    body["text"] = Value::String(text.unwrap_or_else(|| "Submitted via CLI.".to_string()));
     body
 }
 
@@ -179,7 +179,7 @@ pub(crate) async fn run(
             if let Some(v) = qty { body["orderQty"] = json!(v); }
             if let Some(v) = price { body["price"] = json!(v); }
             if let Some(v) = stop_px { body["stopPx"] = json!(v); }
-            if let Some(v) = text { body["text"] = Value::String(v); }
+            body["text"] = Value::String(text.unwrap_or_else(|| "Amended via CLI.".to_string()));
             let val = client.put("/order", &body, creds).await?;
             Ok(CommandOutput::from_json(val))
         }
@@ -191,7 +191,7 @@ pub(crate) async fn run(
             let mut body = json!({});
             if let Some(v) = order_id { body["orderID"] = Value::String(v); }
             if let Some(v) = cl_ord_id { body["clOrdID"] = Value::String(v); }
-            if let Some(v) = text { body["text"] = Value::String(v); }
+            body["text"] = Value::String(text.unwrap_or_else(|| "Canceled via CLI.".to_string()));
             let val = client.delete("/order", "", Some(&body), creds).await?;
             Ok(CommandOutput::from_json(val))
         }
@@ -202,7 +202,7 @@ pub(crate) async fn run(
             }
             let mut body = json!({});
             if let Some(v) = symbol { body["symbol"] = Value::String(v); }
-            if let Some(v) = text { body["text"] = Value::String(v); }
+            body["text"] = Value::String(text.unwrap_or_else(|| "Canceled via CLI.".to_string()));
             let val = client.delete("/order/all", "", Some(&body), creds).await?;
             Ok(CommandOutput::from_json(val))
         }
