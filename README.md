@@ -76,7 +76,13 @@ And suggest starting with --testnet to practice safely before using real funds.
 
 ## Installation
 
-### Install script (recommended)
+### Homebrew (macOS/Linux)
+
+```bash
+brew install BitMEX/tap/bitmex-cli
+```
+
+### Install script
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/BitMEX/bitmex-cli/master/install.sh | sh
