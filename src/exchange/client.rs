@@ -141,11 +141,7 @@ impl BitmexClient {
 
     /// Authenticated GET.
     pub async fn get_auth(&self, path: &str, query: &str, creds: &Credentials) -> Result<Value> {
-        let full_path = if query.is_empty() {
-            format!("/api/v1{path}")
-        } else {
-            format!("/api/v1{path}?{query}")
-        };
+        let full_path = signing_path(path, query);
         let url = self.url(path, query);
         if self.verbose { crate::cli::output::verbose(&format!("GET {url} (auth)")); }
         self.begin_request();
@@ -205,11 +201,7 @@ impl BitmexClient {
         body: Option<&Value>,
         creds: &Credentials,
     ) -> Result<Value> {
-        let full_path = if query.is_empty() {
-            format!("/api/v1{path}")
-        } else {
-            format!("/api/v1{path}?{query}")
-        };
+        let full_path = signing_path(path, query);
         let body_str = body.map(|b| serde_json::to_string(b)).transpose()?.unwrap_or_default();
         let url = self.url(path, query);
         if self.verbose { crate::cli::output::verbose(&format!("DELETE {url}")); }
@@ -396,6 +388,26 @@ impl ExchangeClient for BitmexClient {
 /// BitMEX errors typically look like:
 ///   `{"error":{"message":"Invalid API Key.","name":"HTTPError"}}`
 ///   or `{"error":"some string"}`
+/// Build the path+query string for HMAC signing, using the same URL encoding
+/// that reqwest/url applies when sending the request.
+///
+/// Without this, a query containing `"` (e.g. a JSON filter) would be signed
+/// as `filter={"ordStatus":"New"}` but sent as `filter={%22ordStatus%22:%22New%22}`,
+/// causing a 401 signature mismatch.
+fn signing_path(path: &str, query: &str) -> String {
+    if query.is_empty() {
+        return format!("/api/v1{path}");
+    }
+    let dummy = format!("https://x/api/v1{path}?{query}");
+    match url::Url::parse(&dummy) {
+        Ok(parsed) => match parsed.query() {
+            Some(q) => format!("{}?{}", parsed.path(), q),
+            None => format!("/api/v1{path}"),
+        },
+        Err(_) => format!("/api/v1{path}?{query}"),
+    }
+}
+
 fn extract_error_message(body: &str) -> String {
     if let Ok(v) = serde_json::from_str::<Value>(body) {
         if let Some(err) = v.get("error") {
@@ -408,6 +420,29 @@ fn extract_error_message(body: &str) -> String {
         }
     }
     body.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn signing_path_encodes_json_filter_quotes() {
+        let sp = signing_path("/order", r#"symbol=XBTUSD&filter={"ordStatus":"New"}"#);
+        assert_eq!(sp, r#"/api/v1/order?symbol=XBTUSD&filter={%22ordStatus%22:%22New%22}"#);
+    }
+
+    #[test]
+    fn signing_path_empty_query() {
+        let sp = signing_path("/order", "");
+        assert_eq!(sp, "/api/v1/order");
+    }
+
+    #[test]
+    fn signing_path_simple_params_unchanged() {
+        let sp = signing_path("/order", "symbol=XBTUSD&count=10");
+        assert_eq!(sp, "/api/v1/order?symbol=XBTUSD&count=10");
+    }
 }
 
 /// Validate and normalise a URL override from a CLI flag or environment variable.
