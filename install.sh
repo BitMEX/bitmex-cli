@@ -95,7 +95,7 @@ install_skills() {
 main() {
   target=$(get_target)
 
-  tag=$(curl -sSfL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+  tag=$(curl -sSfL -o /dev/null -w "%{url_effective}" "https://github.com/${REPO}/releases/latest" 2>/dev/null | grep -o 'v[0-9][^/]*$' || true)
   if [ -z "$tag" ]; then
     echo "Error: could not determine latest release" >&2
     exit 1
