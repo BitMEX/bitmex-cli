@@ -70,7 +70,7 @@ async fn main() {
     };
 
     let api_url = resolve(cli.api_url.as_deref(), "BITMEX_API_URL", "--api-url");
-    let ws_url = resolve(None, "BITMEX_WS_URL", "BITMEX_WS_URL");
+    let ws_url = resolve(cli.ws_url.as_deref(), "BITMEX_WS_URL", "--ws-url");
 
     // Merge CLI --testnet with the active profile's testnet flag
     let testnet = bitmex_cli::config::effective_testnet(cli.profile.as_deref(), cli.testnet);
