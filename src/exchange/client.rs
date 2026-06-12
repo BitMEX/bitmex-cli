@@ -447,7 +447,9 @@ mod tests {
 
 /// Validate and normalise a URL override from a CLI flag or environment variable.
 ///
-/// Accepts `http://` (for local test servers) and `https://` schemes only.
+/// Accepts `https://`, `http://`, `wss://`, and `ws://` schemes.
+/// Unencrypted schemes (`http://`, `ws://`) are restricted to localhost unless
+/// `BITMEX_DANGER_ALLOW_ANY_URL_HOST=1` is set.
 /// Returns `None` if `cli_flag` and `env_val` are both `None`, so callers fall
 /// back to their compiled-in default.
 pub fn resolve_url_override(
@@ -462,14 +464,14 @@ pub fn resolve_url_override(
     let url = url::Url::parse(raw)?;
     let scheme = url.scheme();
 
-    if scheme != "https" && scheme != "http" {
+    if !matches!(scheme, "https" | "http" | "wss" | "ws") {
         return Err(BitmexError::Validation { message: format!(
-            "URL must use https:// or http://, got: {raw}"
+            "URL must use https://, http://, wss://, or ws://, got: {raw}"
         ) });
     }
 
-    // Block arbitrary internet hosts unless the danger env var is set.
-    if scheme == "http" {
+    // Block arbitrary internet hosts for unencrypted schemes unless the danger env var is set.
+    if matches!(scheme, "http" | "ws") {
         let host = url.host_str().unwrap_or("");
         let is_local = host == "localhost"
             || host == "127.0.0.1"
@@ -479,7 +481,7 @@ pub fn resolve_url_override(
             env::var("BITMEX_DANGER_ALLOW_ANY_URL_HOST").is_ok_and(|v| v == "1");
         if !is_local && !danger_allowed {
             return Err(BitmexError::Validation { message: format!(
-                "http:// is only allowed for localhost/127.0.0.1 or when \
+                "{scheme}:// is only allowed for localhost/127.0.0.1 or when \
                  BITMEX_DANGER_ALLOW_ANY_URL_HOST=1 is set. Got: {raw}"
             ) });
         }
