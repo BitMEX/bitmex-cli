@@ -1,6 +1,29 @@
 /// Order management commands: buy, sell, amend, cancel, cancel-all, cancel-after, close-position.
-use clap::Subcommand;
+use clap::{Subcommand, ValueEnum};
 use serde_json::{json, Value};
+
+/// Position strategy for an order leg under Hedge (MultiWay) mode.
+///
+/// In One-Way mode leave this unset (or `oneway`); in Hedge Mode pass `long`
+/// or `short` to target the corresponding position bucket.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub(crate) enum OrderStrategy {
+    #[value(name = "oneway", alias = "one-way")]
+    OneWay,
+    Long,
+    Short,
+}
+
+impl OrderStrategy {
+    /// The exact string the BitMEX API expects for the `strategy` field.
+    fn as_api(self) -> &'static str {
+        match self {
+            OrderStrategy::OneWay => "OneWay",
+            OrderStrategy::Long => "Long",
+            OrderStrategy::Short => "Short",
+        }
+    }
+}
 
 use crate::exchange::client::ExchangeClient;
 use crate::cli::commands::helpers::confirm_destructive;
@@ -26,6 +49,10 @@ pub(crate) enum OrderCommand {
         /// Execution instructions (e.g. ParticipateDoNotInitiate, ReduceOnly).
         #[arg(long)]
         exec_inst: Option<String>,
+        /// Position strategy for Hedge Mode: `long` or `short`. Requires hedge
+        /// mode enabled; omit (or `oneway`) for One-Way accounts.
+        #[arg(long, value_enum)]
+        strategy: Option<OrderStrategy>,
         #[arg(long)]
         cl_ord_id: Option<String>,
         #[arg(long)]
@@ -48,6 +75,10 @@ pub(crate) enum OrderCommand {
         tif: Option<String>,
         #[arg(long)]
         exec_inst: Option<String>,
+        /// Position strategy for Hedge Mode: `long` or `short`. Requires hedge
+        /// mode enabled; omit (or `oneway`) for One-Way accounts.
+        #[arg(long, value_enum)]
+        strategy: Option<OrderStrategy>,
         #[arg(long)]
         cl_ord_id: Option<String>,
         #[arg(long)]
@@ -108,6 +139,7 @@ pub(crate) enum OrderCommand {
     },
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_order_body(
     symbol: &str,
     side: &str,
@@ -117,6 +149,7 @@ fn build_order_body(
     stop_px: Option<f64>,
     tif: Option<String>,
     exec_inst: Option<String>,
+    strategy: Option<String>,
     cl_ord_id: Option<String>,
     text: Option<String>,
 ) -> Value {
@@ -130,6 +163,7 @@ fn build_order_body(
     if let Some(p) = stop_px { body["stopPx"] = json!(p); }
     if let Some(t) = tif { body["timeInForce"] = Value::String(t); }
     if let Some(e) = exec_inst { body["execInst"] = Value::String(e); }
+    if let Some(s) = strategy { body["strategy"] = Value::String(s); }
     if let Some(c) = cl_ord_id { body["clOrdID"] = Value::String(c); }
     body["text"] = Value::String(text.unwrap_or_else(|| "Submitted via CLI.".to_string()));
     body
@@ -143,9 +177,9 @@ pub(crate) async fn run(
 ) -> Result<CommandOutput> {
     match cmd {
         OrderCommand::Buy {
-            symbol, qty, order_type, price, stop_px, tif, exec_inst, cl_ord_id, text, validate,
+            symbol, qty, order_type, price, stop_px, tif, exec_inst, strategy, cl_ord_id, text, validate,
         } => {
-            let body = build_order_body(&symbol, "Buy", qty, &order_type, price, stop_px, tif, exec_inst, cl_ord_id, text);
+            let body = build_order_body(&symbol, "Buy", qty, &order_type, price, stop_px, tif, exec_inst, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text);
             if validate {
                 return Ok(CommandOutput::from_json(body));
             }
@@ -157,9 +191,9 @@ pub(crate) async fn run(
         }
 
         OrderCommand::Sell {
-            symbol, qty, order_type, price, stop_px, tif, exec_inst, cl_ord_id, text, validate,
+            symbol, qty, order_type, price, stop_px, tif, exec_inst, strategy, cl_ord_id, text, validate,
         } => {
-            let body = build_order_body(&symbol, "Sell", qty, &order_type, price, stop_px, tif, exec_inst, cl_ord_id, text);
+            let body = build_order_body(&symbol, "Sell", qty, &order_type, price, stop_px, tif, exec_inst, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text);
             if validate {
                 return Ok(CommandOutput::from_json(body));
             }
@@ -229,10 +263,40 @@ pub(crate) async fn run(
             Ok(CommandOutput::builder()
                 .data(val)
                 .columns(&[
-                    "orderID", "symbol", "side", "orderQty", "price",
+                    "orderID", "symbol", "side", "strategy", "orderQty", "price",
                     "ordType", "ordStatus", "avgPx", "leavesQty", "timestamp",
                 ])
                 .build())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_body(strategy: Option<String>) -> Value {
+        build_order_body(
+            "XBTUSD", "Buy", 100.0, "Limit", Some(50000.0), None, None, None, strategy, None, None,
+        )
+    }
+
+    #[test]
+    fn order_strategy_maps_to_exact_api_strings() {
+        assert_eq!(OrderStrategy::OneWay.as_api(), "OneWay");
+        assert_eq!(OrderStrategy::Long.as_api(), "Long");
+        assert_eq!(OrderStrategy::Short.as_api(), "Short");
+    }
+
+    #[test]
+    fn build_order_body_includes_strategy_when_set() {
+        let body = sample_body(Some(OrderStrategy::Long.as_api().to_string()));
+        assert_eq!(body["strategy"], "Long");
+    }
+
+    #[test]
+    fn build_order_body_omits_strategy_when_unset() {
+        let body = sample_body(None);
+        assert!(body.get("strategy").is_none());
     }
 }

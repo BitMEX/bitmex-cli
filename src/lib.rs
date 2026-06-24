@@ -90,6 +90,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub api_url: Option<String>,
 
+    /// Override WebSocket URL.
+    #[arg(long, global = true)]
+    pub ws_url: Option<String>,
+
     /// API key override (takes precedence over env/config).
     #[arg(long, global = true)]
     pub api_key: Option<String>,
@@ -327,7 +331,7 @@ pub(crate) async fn execute_command(ctx: &AppContext, command: Command) -> Resul
                 ctx.api_secret.as_deref(),
                 ctx.no_keychain,
             )?;
-            account::run(cmd, &client, &creds).await
+            account::run(cmd, &client, &creds, ctx).await
         }
 
         Command::Subaccount { cmd } => {
@@ -435,11 +439,13 @@ pub(crate) async fn execute_command(ctx: &AppContext, command: Command) -> Resul
         }
 
         Command::Ws(args) => {
-            let ws_url = if ctx.testnet {
-                exchange::client::WS_TESTNET_URL.to_string()
-            } else {
-                exchange::client::WS_MAINNET_URL.to_string()
-            };
+            let ws_url = ctx.ws_url.clone().unwrap_or_else(|| {
+                if ctx.testnet {
+                    exchange::client::WS_TESTNET_URL.to_string()
+                } else {
+                    exchange::client::WS_MAINNET_URL.to_string()
+                }
+            });
             let needs_auth = args.auth || args.topics.iter().any(|t| ws::is_private_topic(t));
             let creds = if needs_auth {
                 config::resolve_credentials(

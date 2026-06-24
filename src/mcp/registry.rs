@@ -426,6 +426,23 @@ mod tests {
     }
 
     #[test]
+    fn account_position_mode_registered_and_dangerous() {
+        let registry =
+            ToolRegistry::build(&["account".into(), "position".into()]).unwrap();
+        let entry = registry
+            .get_by_name("bitmex.account.position.mode")
+            .expect("account position-mode should register as an MCP tool");
+        assert!(entry.dangerous, "position-mode must be marked dangerous");
+        // The `position mode` alias is intentionally CLI-only (no catalog entry),
+        // so it must not surface as a second, duplicate MCP tool even when the
+        // position group is loaded.
+        assert!(
+            registry.get_by_name("bitmex.position.mode").is_none(),
+            "position mode alias should not be an MCP tool"
+        );
+    }
+
+    #[test]
     fn auth_excluded_commands() {
         let registry = ToolRegistry::build(&["auth".into()]).unwrap();
         assert!(
