@@ -220,9 +220,10 @@
         {"name": "price", "type": "number", "required": false},
         {"name": "tif", "type": "string", "required": false},
         {"name": "exec_inst", "type": "string", "required": false},
+        {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
         {"name": "validate", "type": "boolean", "required": false}
       ],
-      "example": "bitmex order buy XBTUSD 100 --price 50000 -o json"
+      "example": "bitmex order buy XBTUSD 100 --price 50000 --strategy Long -o json"
     },
     {
       "name": "order sell",
@@ -236,9 +237,10 @@
         {"name": "qty", "type": "number", "required": true},
         {"name": "order_type", "type": "string", "required": false, "default": "Limit"},
         {"name": "price", "type": "number", "required": false},
+        {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
         {"name": "validate", "type": "boolean", "required": false}
       ],
-      "example": "bitmex order sell XBTUSD 100 --price 50000 -o json"
+      "example": "bitmex order sell XBTUSD 100 --price 50000 --strategy Short -o json"
     },
     {
       "name": "order amend",
@@ -718,6 +720,19 @@
         {"name": "currency", "type": "string", "required": false}
       ],
       "example": "bitmex account margining-mode REGULAR_MARGIN -o json"
+    },
+    {
+      "name": "account position-mode",
+      "command": "bitmex account position-mode <mode>",
+      "group": "account",
+      "description": "[DANGEROUS] Switch position mode: oneway (netting) or multiway (Hedge Mode). Rejected if the account has open orders or isolated-margin positions.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "mode", "type": "string", "required": true, "description": "oneway or multiway (alias hedge)."},
+        {"name": "target_account_id", "type": "integer", "required": false, "description": "Paired/sub-account to switch."}
+      ],
+      "example": "bitmex account position-mode multiway -o json"
     },
     {
       "name": "account quote-fill-ratio",

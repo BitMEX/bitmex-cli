@@ -14,6 +14,7 @@ pub(crate) mod notifications;
 pub(crate) mod order;
 pub(crate) mod porl;
 pub(crate) mod position;
+pub(crate) mod position_mode;
 pub(crate) mod referral;
 pub(crate) mod staking;
 pub(crate) mod subaccount;

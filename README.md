@@ -169,6 +169,8 @@ bitmex announce urgent
 ```bash
 bitmex order buy  XBTUSD 100 --price 50000 [--order-type Limit] [--validate]
 bitmex order sell XBTUSD 100 --price 52000 [--tif GoodTillCancel]
+bitmex order buy  XBTUSD 100 --price 50000 --strategy Long   # Hedge Mode leg
+bitmex order sell XBTUSD 100 --price 52000 --strategy Short  # Hedge Mode leg
 bitmex order amend --order-id <id> --price 51000
 bitmex order cancel --order-id <id>
 bitmex order cancel-all [--symbol XBTUSD]
@@ -180,13 +182,36 @@ bitmex order list [--symbol XBTUSD]
 ### Positions (auth required)
 
 ```bash
-bitmex position list [--symbol XBTUSD]
+bitmex position list [--symbol XBTUSD]          # table shows the `strategy` column
 bitmex position leverage XBTUSD 10
 bitmex position cross-leverage XBTUSD 5
 bitmex position isolate XBTUSD --enabled
 bitmex position risk-limit XBTUSD 20000000000
 bitmex position transfer-margin XBTUSD 100000   # satoshis
 ```
+
+### Hedge Mode (MultiWay) (auth required)
+
+Hedge Mode lets you hold independent Long and Short positions on the same
+contract instead of netting into one. It is an account-level setting and applies
+to uncapped derivatives only. Switching is rejected while the account has open
+orders or isolated-margin positions.
+
+```bash
+bitmex account position-mode multiway   # enable Hedge Mode (alias: hedge)
+bitmex account position-mode oneway      # back to One-Way (netting)
+bitmex position mode multiway            # alias for `account position-mode`
+```
+
+Once enabled, tag each order leg with its strategy:
+
+```bash
+bitmex order buy  XBTUSD 100 --price 50000 --strategy Long
+bitmex order sell XBTUSD 100 --price 52000 --strategy Short
+```
+
+See [What is Hedge Mode](https://support.bitmex.com/hc/en-gb/articles/32985620308381-What-is-Hedge-Mode)
+and [How traders use Hedge Mode](https://support.bitmex.com/hc/en-gb/articles/36691242524317-How-can-traders-use-Hedge-Mode-to-improve-their-trading-and-strategies).
 
 ### Execution history (auth required)
 

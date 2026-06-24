@@ -331,7 +331,7 @@ pub(crate) async fn execute_command(ctx: &AppContext, command: Command) -> Resul
                 ctx.api_secret.as_deref(),
                 ctx.no_keychain,
             )?;
-            account::run(cmd, &client, &creds).await
+            account::run(cmd, &client, &creds, ctx).await
         }
 
         Command::Subaccount { cmd } => {

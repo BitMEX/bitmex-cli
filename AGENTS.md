@@ -273,6 +273,22 @@ bitmex execution trade-history --count 20 -o json
 bitmex wallet balance -o json
 ```
 
+### Hedge Mode (MultiWay)
+
+Hedge Mode is an account-level setting that lets you hold independent Long and Short positions on the same contract (uncapped derivatives only). Switching is rejected while the account has open orders or isolated-margin positions.
+
+```bash
+bitmex account position-mode multiway --yes -o json   # enable (alias: hedge)
+bitmex account position-mode oneway --yes -o json      # disable (netting)
+```
+
+Once enabled, tag each order leg with `--strategy Long` or `--strategy Short`. Each position carries a `strategy` field (`Long`/`Short`/`OneWay`); the account carries `positionMode`.
+
+```bash
+bitmex order buy  XBTUSD 100 --price 50000 --strategy Long --yes -o json
+bitmex order sell XBTUSD 100 --price 52000 --strategy Short --yes -o json
+```
+
 ### Tick size and lot size alignment
 
 Every instrument enforces a minimum price increment (`tickSize`) and minimum quantity increment (`lotSize`). Submitting a price or quantity that isn't a multiple of these will return a `400 Invalid price` or `400 Invalid quantity` error.

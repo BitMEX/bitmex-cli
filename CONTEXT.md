@@ -82,8 +82,8 @@ Use `bitmex market instrument --active -o json` to list all tradeable instrument
 | Group | Auth | Description |
 |-------|------|-------------|
 | `market` | No | Instruments, quotes, trades, orderbook, funding, liquidations, stats |
-| `order` | Yes | Place, amend, cancel orders |
-| `position` | Yes | List positions, set leverage, manage margin |
+| `order` | Yes | Place, amend, cancel orders (`--strategy Long/Short` for Hedge Mode legs) |
+| `position` | Yes | List positions, set leverage, manage margin, switch Hedge Mode |
 | `execution` | Yes | Fill history, trade history with PnL |
 | `wallet` | Yes | Balances, deposits, withdrawals, transfers |
 | `staking` | Yes | Staking positions and instruments |
@@ -189,6 +189,12 @@ bitmex order list --symbol XBTUSD -o json
 # Positions
 bitmex position list -o json
 bitmex position leverage XBTUSD 10 -o json
+
+# Hedge Mode (MultiWay): independent Long + Short on one contract
+bitmex account position-mode multiway --yes -o json   # enable (alias: hedge)
+bitmex account position-mode oneway --yes -o json      # disable (netting)
+bitmex order buy  XBTUSD 100 --price 50000 --strategy Long --yes -o json
+bitmex order sell XBTUSD 100 --price 52000 --strategy Short --yes -o json
 
 # WebSocket (NDJSON to stdout)
 bitmex ws trade:XBTUSD orderBookL2_25:XBTUSD

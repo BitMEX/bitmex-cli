@@ -4,9 +4,11 @@ use serde_json::{json, Value};
 
 use crate::exchange::client::ExchangeClient;
 use crate::cli::commands::helpers::build_query;
+use crate::cli::commands::position_mode::{self, PositionModeArg};
 use crate::config::Credentials;
 use crate::errors::Result;
 use crate::cli::output::CommandOutput;
+use crate::AppContext;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum AccountCommand {
@@ -52,12 +54,26 @@ pub(crate) enum AccountCommand {
         #[arg(long)]
         currency: Option<String>,
     },
+    /// Switch position mode: oneway (netting) or multiway (Hedge Mode).
+    ///
+    /// Hedge Mode lets you hold independent Long and Short positions on the
+    /// same contract. The switch is rejected if the account has open orders or
+    /// isolated-margin positions.
+    PositionMode {
+        /// Target mode: `oneway` or `multiway` (alias `hedge`).
+        #[arg(value_enum)]
+        mode: PositionModeArg,
+        /// Paired/sub-account to switch (defaults to the calling account).
+        #[arg(long)]
+        target_account_id: Option<i64>,
+    },
 }
 
 pub(crate) async fn run(
     cmd: AccountCommand,
     client: &impl ExchangeClient,
     creds: &Credentials,
+    ctx: &AppContext,
 ) -> Result<CommandOutput> {
     match cmd {
         AccountCommand::Me => {
@@ -122,5 +138,9 @@ pub(crate) async fn run(
             let val = client.post("/user/marginingMode", &body, creds).await?;
             Ok(CommandOutput::from_json(val))
         }
+        AccountCommand::PositionMode {
+            mode,
+            target_account_id,
+        } => position_mode::run(client, creds, ctx, mode, target_account_id).await,
     }
 }
