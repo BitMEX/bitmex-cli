@@ -133,5 +133,35 @@ fn position_help_shows_subcommands() {
         .args(["position", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("list"));
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("mode"));
+}
+
+#[test]
+fn account_help_shows_position_mode() {
+    bitmex()
+        .args(["account", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("position-mode"));
+}
+
+#[test]
+fn position_mode_help_lists_modes() {
+    bitmex()
+        .args(["account", "position-mode", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("oneway"))
+        .stdout(predicate::str::contains("multiway"))
+        .stdout(predicate::str::contains("hedge"));
+}
+
+#[test]
+fn order_buy_help_shows_strategy_flag() {
+    bitmex()
+        .args(["order", "buy", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--strategy"));
 }

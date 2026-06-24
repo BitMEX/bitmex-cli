@@ -3,6 +3,7 @@ use serde_json::json;
 
 use crate::exchange::client::ExchangeClient;
 use crate::cli::commands::helpers::{build_query, confirm_destructive};
+use crate::cli::commands::position_mode::{self, PositionModeArg};
 use crate::config::Credentials;
 use crate::errors::Result;
 use crate::cli::output::CommandOutput;
@@ -47,6 +48,18 @@ pub(crate) enum PositionCommand {
         /// Amount in satoshis.
         amount: i64,
     },
+    /// Switch position mode: oneway (netting) or multiway (Hedge Mode).
+    ///
+    /// Alias for `account position-mode`. Hedge Mode lets you hold independent
+    /// Long and Short positions on the same contract.
+    Mode {
+        /// Target mode: `oneway` or `multiway` (alias `hedge`).
+        #[arg(value_enum)]
+        mode: PositionModeArg,
+        /// Paired/sub-account to switch (defaults to the calling account).
+        #[arg(long)]
+        target_account_id: Option<i64>,
+    },
 }
 
 pub(crate) async fn run(
@@ -70,7 +83,7 @@ pub(crate) async fn run(
             Ok(CommandOutput::builder()
                 .data(val)
                 .columns(&[
-                    "symbol", "currentQty", "avgEntryPrice", "markPrice",
+                    "symbol", "strategy", "currentQty", "avgEntryPrice", "markPrice",
                     "liquidationPrice", "unrealisedPnl", "realisedPnl",
                     "leverage", "crossMargin", "marginCallPrice",
                 ])
@@ -129,5 +142,10 @@ pub(crate) async fn run(
                 .await?;
             Ok(CommandOutput::from_json(val))
         }
+
+        PositionCommand::Mode {
+            mode,
+            target_account_id,
+        } => position_mode::run(client, creds, ctx, mode, target_account_id).await,
     }
 }
