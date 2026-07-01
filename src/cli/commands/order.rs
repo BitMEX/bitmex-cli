@@ -155,7 +155,7 @@ pub(crate) enum OrderCommand {
         /// Position strategy for Hedge Mode: `long` or `short`.
         #[arg(long, value_enum)]
         strategy: Option<OrderStrategy>,
-        /// Client order id (single-order placements only).
+        /// Client order id. Not allowed for OCO brackets (two orders cannot share one clOrdID).
         #[arg(long)]
         cl_ord_id: Option<String>,
         #[arg(long)]
@@ -383,6 +383,12 @@ pub(crate) async fn run(
             if (stop_px.is_some() || tp_px.is_some()) && trigger.is_none() {
                 return Err(crate::errors::BitmexError::Validation {
                     message: "stop/take-profit close orders require --trigger last|mark|index".into(),
+                });
+            }
+            // OCO brackets produce two orders; a single clOrdID cannot be shared.
+            if cl_ord_id.is_some() && stop_px.is_some() && tp_px.is_some() {
+                return Err(crate::errors::BitmexError::Validation {
+                    message: "--cl-ord-id is not supported for OCO brackets (both --stop-px and --tp-px set): two orders cannot share one clOrdID".into(),
                 });
             }
             let exec_inst = close_exec_inst(trigger);
