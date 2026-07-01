@@ -46,6 +46,7 @@ fn order_help_shows_subcommands() {
         .success()
         .stdout(predicate::str::contains("buy"))
         .stdout(predicate::str::contains("sell"))
+        .stdout(predicate::str::contains("close"))
         .stdout(predicate::str::contains("cancel"));
 }
 
@@ -164,4 +165,16 @@ fn order_buy_help_shows_strategy_flag() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--strategy"));
+}
+
+#[test]
+fn order_close_help_shows_flags() {
+    bitmex()
+        .args(["order", "close", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--side"))
+        .stdout(predicate::str::contains("--stop-px"))
+        .stdout(predicate::str::contains("--tp-px"))
+        .stdout(predicate::str::contains("--trigger"));
 }

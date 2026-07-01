@@ -175,8 +175,18 @@ bitmex order amend --order-id <id> --price 51000
 bitmex order cancel --order-id <id>
 bitmex order cancel-all [--symbol XBTUSD]
 bitmex order cancel-after 60000        # Dead Man's Switch (ms)
-bitmex order close-position XBTUSD
 bitmex order list [--symbol XBTUSD]
+```
+
+100% position-closing orders — `orderQty` is omitted, so they track the full
+position dynamically (BitMEX renders them as SL/TP 100%). `--side sell` closes a
+long, `--side buy` closes a short. `--trigger` is required with `--stop-px`/`--tp-px`.
+
+```bash
+bitmex order close XBTUSD --side sell --stop-px 50000 --trigger mark   # Stop-Loss 100%
+bitmex order close XBTUSD --side sell --tp-px 60000 --trigger last     # Take-Profit 100%
+bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger mark  # OCO bracket
+bitmex order close XBTUSD --side sell                                  # market close 100%
 ```
 
 ### Positions (auth required)

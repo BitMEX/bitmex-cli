@@ -323,6 +323,26 @@ bitmex order buy XBTUSD 100 --price 50000 --validate -o json
 bitmex order buy XBTUSD 100 --price 50000 --yes -o json
 ```
 
+### Closing positions (Stop-Loss, Take-Profit, OCO)
+
+`order close` places a 100% position-closing order. It omits `orderQty`, so the order tracks the **entire** position dynamically — BitMEX renders it as `SL (100%)` / `TP (100%)`, and it never needs resyncing as the position size changes. `--side sell` closes a long; `--side buy` closes a short. A trigger price type (`--trigger last|mark|index`) is required whenever `--stop-px` or `--tp-px` is set; `mark` resists wick-outs and is recommended for risk orders.
+
+```bash
+# Stop-Loss 100% (Stop; add --stop-limit-px for StopLimit)
+bitmex order close XBTUSD --side sell --stop-px 50000 --trigger mark --yes -o json
+
+# Take-Profit 100% (MarketIfTouched; add --tp-limit-px for LimitIfTouched)
+bitmex order close XBTUSD --side sell --tp-px 60000 --trigger last --yes -o json
+
+# OCO bracket: SL + TP linked via clOrdLinkID + contingencyType. Filling one cancels the other.
+bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger mark --yes -o json
+
+# Immediate market close of the full position
+bitmex order close XBTUSD --side sell --yes -o json
+```
+
+Preview any of these with `--validate` to inspect the exact request body (for OCO, both legs) before submitting.
+
 ### Stream live data to a pipeline
 
 ```bash

@@ -243,6 +243,28 @@
       "example": "bitmex order sell XBTUSD 100 --price 50000 --strategy Short -o json"
     },
     {
+      "name": "order close",
+      "command": "bitmex order close <symbol> --side <buy|sell>",
+      "group": "order",
+      "description": "[DANGEROUS] Place a 100% position-closing order: Stop-Loss, Take-Profit, an OCO bracket (both, linked), or an immediate market close. orderQty is omitted so the order tracks the full position dynamically (renders as SL/TP 100%). Pass both --stop-px and --tp-px for an OCO bracket. --side sell closes a long, buy closes a short.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "side", "type": "string", "required": true, "description": "buy or sell. sell closes a long, buy closes a short."},
+        {"name": "stop_px", "type": "number", "required": false, "description": "Stop-Loss trigger price (ordType Stop, or StopLimit with stop_limit_px)."},
+        {"name": "tp_px", "type": "number", "required": false, "description": "Take-Profit trigger price (ordType MarketIfTouched, or LimitIfTouched with tp_limit_px)."},
+        {"name": "trigger", "type": "string", "required": false, "description": "Trigger price type: last, mark, or index. Required when stop_px or tp_px is set."},
+        {"name": "stop_limit_px", "type": "number", "required": false, "description": "Limit price for the Stop-Loss leg (upgrades Stop to StopLimit)."},
+        {"name": "tp_limit_px", "type": "number", "required": false, "description": "Limit price for the Take-Profit leg (upgrades MarketIfTouched to LimitIfTouched)."},
+        {"name": "link_id", "type": "string", "required": false, "description": "OCO clOrdLinkID. Auto-generated for brackets when omitted."},
+        {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
+        {"name": "cl_ord_id", "type": "string", "required": false},
+        {"name": "validate", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger mark -o json"
+    },
+    {
       "name": "order amend",
       "command": "bitmex order amend",
       "group": "order",
