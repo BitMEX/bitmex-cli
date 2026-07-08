@@ -186,6 +186,13 @@ bitmex order cancel --order-id <id> --yes -o json
 bitmex order cancel-all --symbol XBTUSD --yes -o json
 bitmex order list --symbol XBTUSD -o json
 
+# 100% position-closing orders (orderQty omitted -> tracks full position; SL/TP 100%)
+# --side sell closes a long, buy closes a short. --trigger required with --stop-px/--tp-px.
+bitmex order close XBTUSD --side sell --stop-px 50000 --trigger mark --yes -o json            # Stop-Loss 100%
+bitmex order close XBTUSD --side sell --tp-px 60000 --trigger last --yes -o json              # Take-Profit 100%
+bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger mark --yes -o json  # OCO bracket (fill one cancels the other)
+bitmex order close XBTUSD --side sell --yes -o json                                           # market close 100%
+
 # Positions
 bitmex position list -o json
 bitmex position leverage XBTUSD 10 -o json

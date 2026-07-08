@@ -46,6 +46,7 @@ fn order_help_shows_subcommands() {
         .success()
         .stdout(predicate::str::contains("buy"))
         .stdout(predicate::str::contains("sell"))
+        .stdout(predicate::str::contains("close"))
         .stdout(predicate::str::contains("cancel"));
 }
 
@@ -164,4 +165,36 @@ fn order_buy_help_shows_strategy_flag() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--strategy"));
+}
+
+#[test]
+fn order_close_help_shows_flags() {
+    bitmex()
+        .args(["order", "close", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--side"))
+        .stdout(predicate::str::contains("--stop-px"))
+        .stdout(predicate::str::contains("--tp-px"))
+        .stdout(predicate::str::contains("--trigger"));
+}
+
+#[test]
+fn order_close_rejects_cl_ord_id_for_oco_bracket() {
+    // cl_ord_id cannot be assigned to an OCO bracket (two orders can't share one clOrdID).
+    // The guard fires before any network call, so fake credentials are sufficient.
+    bitmex()
+        .args([
+            "--api-key", "fake",
+            "--api-secret", "fake",
+            "order", "close", "XBTUSD",
+            "--side", "sell",
+            "--stop-px", "50000",
+            "--tp-px", "60000",
+            "--trigger", "mark",
+            "--cl-ord-id", "my-id",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--cl-ord-id is not supported for OCO brackets"));
 }
