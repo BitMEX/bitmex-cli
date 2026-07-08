@@ -460,6 +460,59 @@ mod tests {
     }
 
     #[test]
+    fn registry_registers_peg_and_chaser_tools() {
+        let registry = ToolRegistry::build(&["order".into()]).unwrap();
+        let by_name = |n: &str| registry.tools().iter().find(|e| e.tool.name == n);
+
+        let chase = by_name("bitmex.order.chase").expect("order.chase tool should be registered");
+        assert!(chase.dangerous);
+        let props = chase
+            .tool
+            .input_schema
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .expect("chase schema should have properties");
+        for k in ["symbol", "side", "qty", "offset", "bothways"] {
+            assert!(props.contains_key(k), "chase schema missing `{k}`");
+        }
+        // `side` should be constrained to Buy/Sell.
+        assert!(props["side"].get("oneOf").is_some(), "side should expose oneOf");
+
+        // tool_name_from_key replaces '-' with '.', so trailing-stop -> trailing.stop.
+        let trailing = by_name("bitmex.order.trailing.stop")
+            .expect("order.trailing-stop tool should be registered");
+        assert!(trailing.dangerous);
+        let tprops = trailing
+            .tool
+            .input_schema
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .expect("trailing-stop schema should have properties");
+        for k in ["symbol", "side", "qty", "offset", "limit_price", "trigger"] {
+            assert!(tprops.contains_key(k), "trailing-stop schema missing `{k}`");
+        }
+    }
+
+    #[test]
+    fn buy_tool_exposes_peg_parameters() {
+        let registry = ToolRegistry::build(&["order".into()]).unwrap();
+        let buy = registry
+            .tools()
+            .iter()
+            .find(|e| e.tool.name == "bitmex.order.buy")
+            .expect("order.buy tool should be registered");
+        let props = buy
+            .tool
+            .input_schema
+            .get("properties")
+            .and_then(|p| p.as_object())
+            .unwrap();
+        assert!(props.contains_key("peg_price_type"));
+        assert!(props.contains_key("peg_offset_value"));
+        assert!(props["peg_price_type"].get("oneOf").is_some());
+    }
+
+    #[test]
     fn dangerous_tools_have_acknowledged_in_schema() {
         let registry = ToolRegistry::build(&["order".into()]).unwrap();
         let dangerous_tools: Vec<_> = registry.tools().iter().filter(|e| e.dangerous).collect();

@@ -289,6 +289,30 @@ bitmex order buy  XBTUSD 100 --price 50000 --strategy Long --yes -o json
 bitmex order sell XBTUSD 100 --price 52000 --strategy Short --yes -o json
 ```
 
+### Peg, Chaser & Trailing Stop orders
+
+Pegged orders price relative to the live market instead of a fixed price. The primitive
+`--peg-price-type`/`--peg-offset-value` flags on `buy`/`sell` map straight to the API
+`pegPriceType`/`pegOffsetValue` fields; `chase` and `trailing-stop` are guided wrappers that
+set `ordType`/`execInst` and **reject a wrong-sign offset locally** (category `validation`)
+before it reaches the exchange.
+
+```bash
+# Pegged limit — requires exec_inst Fixed. PrimaryPeg = near touch, MarketPeg = far touch.
+bitmex order buy XBTUSD 100 --order-type Pegged --exec-inst Fixed \
+    --peg-price-type PrimaryPeg --peg-offset-value -1 --yes -o json
+
+# Chaser (ordType Pegged) — follows the top of book. Sign rule: Buy offset <= 0, Sell >= 0.
+# Max 5 chaser orders per account. --bothways keeps a constant distance (ChaserBothways).
+bitmex order chase XBTUSD Buy  100 --offset -1 --yes -o json
+bitmex order chase XBTUSD Sell 100 --offset  1 --bothways --yes -o json
+
+# Trailing stop (pegPriceType TrailingStopPeg) — sign rule is the OPPOSITE of chaser:
+# Sell offset <= 0, Buy offset >= 0. --limit-price promotes Stop to StopLimit.
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100 --yes -o json
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100 --limit-price 49000 --yes -o json
+```
+
 ### Tick size and lot size alignment
 
 Every instrument enforces a minimum price increment (`tickSize`) and minimum quantity increment (`lotSize`). Submitting a price or quantity that isn't a multiple of these will return a `400 Invalid price` or `400 Invalid quantity` error.

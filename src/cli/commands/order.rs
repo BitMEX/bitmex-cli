@@ -1,4 +1,5 @@
-/// Order management commands: buy, sell, amend, cancel, cancel-all, cancel-after, close.
+/// Order management commands: buy, sell, chase, trailing-stop, close, amend, cancel,
+/// cancel-all, cancel-after, list.
 use clap::{Subcommand, ValueEnum};
 use serde_json::{json, Value};
 
@@ -25,24 +26,63 @@ impl OrderStrategy {
     }
 }
 
-/// Side of a position-closing order. `sell` closes a long, `buy` closes a short.
+/// Reference price a pegged order tracks (`pegPriceType`).
+///
+/// `PrimaryPeg` tracks the **near touch** (best price on your own side); `MarketPeg`
+/// tracks the **far touch** (best price on the opposite side); `TrailingStopPeg` is used
+/// with `Stop`/`StopLimit` orders to build trailing stops. `LastPeg`/`MidPricePeg` peg to
+/// the last-traded and mid prices respectively.
+// Variant names mirror the exact BitMEX `pegPriceType` API values verbatim.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, Copy, ValueEnum)]
-pub(crate) enum CloseSide {
-    Buy,
-    Sell,
+pub(crate) enum PegPriceType {
+    #[value(name = "LastPeg", alias = "last")]
+    LastPeg,
+    #[value(name = "MidPricePeg", alias = "mid")]
+    MidPricePeg,
+    #[value(name = "MarketPeg", alias = "market")]
+    MarketPeg,
+    #[value(name = "PrimaryPeg", alias = "primary")]
+    PrimaryPeg,
+    #[value(name = "TrailingStopPeg", alias = "trailing")]
+    TrailingStopPeg,
 }
 
-impl CloseSide {
-    /// The exact string the BitMEX API expects for the `side` field.
+impl PegPriceType {
+    /// The exact string the BitMEX API expects for the `pegPriceType` field.
     fn as_api(self) -> &'static str {
         match self {
-            CloseSide::Buy => "Buy",
-            CloseSide::Sell => "Sell",
+            PegPriceType::LastPeg => "LastPeg",
+            PegPriceType::MidPricePeg => "MidPricePeg",
+            PegPriceType::MarketPeg => "MarketPeg",
+            PegPriceType::PrimaryPeg => "PrimaryPeg",
+            PegPriceType::TrailingStopPeg => "TrailingStopPeg",
         }
     }
 }
 
-/// Trigger price type for stop / take-profit orders.
+/// Order side for commands where the side is an explicit argument rather than encoded in
+/// the command name (`close`, `chase`, `trailing-stop`). For `close`, `sell` closes a long
+/// and `buy` closes a short.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub(crate) enum OrderSide {
+    #[value(name = "Buy", alias = "buy")]
+    Buy,
+    #[value(name = "Sell", alias = "sell")]
+    Sell,
+}
+
+impl OrderSide {
+    /// The exact string the BitMEX API expects for the `side` field.
+    fn as_api(self) -> &'static str {
+        match self {
+            OrderSide::Buy => "Buy",
+            OrderSide::Sell => "Sell",
+        }
+    }
+}
+
+/// Trigger price type for stop / take-profit / trailing-stop orders.
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub(crate) enum TriggerType {
     Last,
@@ -80,6 +120,12 @@ pub(crate) enum OrderCommand {
         price: Option<f64>,
         #[arg(long)]
         stop_px: Option<f64>,
+        /// Peg reference price for a Pegged/trailing order (sets `pegPriceType`).
+        #[arg(long, value_enum)]
+        peg_price_type: Option<PegPriceType>,
+        /// Peg offset from the reference price (sets `pegOffsetValue`).
+        #[arg(long, allow_hyphen_values = true)]
+        peg_offset_value: Option<f64>,
         #[arg(long)]
         tif: Option<String>,
         /// Execution instructions (e.g. ParticipateDoNotInitiate, ReduceOnly).
@@ -107,6 +153,12 @@ pub(crate) enum OrderCommand {
         price: Option<f64>,
         #[arg(long)]
         stop_px: Option<f64>,
+        /// Peg reference price for a Pegged/trailing order (sets `pegPriceType`).
+        #[arg(long, value_enum)]
+        peg_price_type: Option<PegPriceType>,
+        /// Peg offset from the reference price (sets `pegOffsetValue`).
+        #[arg(long, allow_hyphen_values = true)]
+        peg_offset_value: Option<f64>,
         #[arg(long)]
         tif: Option<String>,
         #[arg(long)]
@@ -122,6 +174,61 @@ pub(crate) enum OrderCommand {
         #[arg(long)]
         validate: bool,
     },
+    /// Place a Chaser order: a pegged order that re-prices to follow the top of book.
+    ///
+    /// Sign rule (enforced): a Buy offset must be <= 0 and a Sell offset must be >= 0.
+    /// Limited to 5 chaser orders per account.
+    Chase {
+        symbol: String,
+        #[arg(value_enum)]
+        side: OrderSide,
+        qty: f64,
+        /// Target distance from the top of book (`pegOffsetValue`).
+        #[arg(long, allow_hyphen_values = true)]
+        offset: f64,
+        /// Keep the distance to the front of book constant (`ChaserBothways`).
+        /// Default follows only when drifting too far away (`ChaserClassic`).
+        #[arg(long)]
+        bothways: bool,
+        #[arg(long, value_enum)]
+        strategy: Option<OrderStrategy>,
+        #[arg(long)]
+        cl_ord_id: Option<String>,
+        #[arg(long)]
+        text: Option<String>,
+        /// Print the request body without submitting.
+        #[arg(long)]
+        validate: bool,
+    },
+    /// Place a Trailing Stop: `stopPx` trails the market by a fixed offset and freezes
+    /// as the market moves toward it.
+    ///
+    /// Sign rule (enforced): a Sell (stop-loss on a long) offset must be <= 0 and a Buy
+    /// (stop-loss on a short) offset must be >= 0.
+    TrailingStop {
+        symbol: String,
+        #[arg(value_enum)]
+        side: OrderSide,
+        qty: f64,
+        /// Trailing distance from the trigger price (`pegOffsetValue`).
+        #[arg(long, allow_hyphen_values = true)]
+        offset: f64,
+        /// Optional limit price. When set the order is a `StopLimit`, otherwise a `Stop`.
+        #[arg(long)]
+        limit_price: Option<f64>,
+        /// Reference price used to trigger (`execInst`). Defaults to MarkPrice.
+        #[arg(long, value_enum)]
+        trigger: Option<TriggerType>,
+        #[arg(long, value_enum)]
+        strategy: Option<OrderStrategy>,
+        #[arg(long)]
+        cl_ord_id: Option<String>,
+        #[arg(long)]
+        text: Option<String>,
+        /// Print the request body without submitting.
+        #[arg(long)]
+        validate: bool,
+    },
     /// Place a 100% position-closing order: Stop-Loss, Take-Profit, an OCO
     /// bracket (both, linked), or an immediate market close.
     ///
@@ -133,7 +240,7 @@ pub(crate) enum OrderCommand {
         symbol: String,
         /// `sell` closes a long, `buy` closes a short.
         #[arg(long, value_enum)]
-        side: CloseSide,
+        side: OrderSide,
         /// Stop-Loss trigger price. Sets ordType=Stop (or StopLimit with --stop-limit-px).
         #[arg(long)]
         stop_px: Option<f64>,
@@ -225,6 +332,8 @@ fn build_order_body(
     order_type: &str,
     price: Option<f64>,
     stop_px: Option<f64>,
+    peg_price_type: Option<String>,
+    peg_offset_value: Option<f64>,
     tif: Option<String>,
     exec_inst: Option<String>,
     strategy: Option<String>,
@@ -241,12 +350,104 @@ fn build_order_body(
     if let Some(q) = qty { body["orderQty"] = json!(q); }
     if let Some(p) = price { body["price"] = json!(p); }
     if let Some(p) = stop_px { body["stopPx"] = json!(p); }
+    if let Some(t) = peg_price_type { body["pegPriceType"] = Value::String(t); }
+    if let Some(o) = peg_offset_value { body["pegOffsetValue"] = json!(o); }
     if let Some(t) = tif { body["timeInForce"] = Value::String(t); }
     if let Some(e) = exec_inst { body["execInst"] = Value::String(e); }
     if let Some(s) = strategy { body["strategy"] = Value::String(s); }
     if let Some(c) = cl_ord_id { body["clOrdID"] = Value::String(c); }
     body["text"] = Value::String(text.unwrap_or_else(|| "Submitted via CLI.".to_string()));
     body
+}
+
+/// Validate the sign convention for a Chaser order's `pegOffsetValue`.
+///
+/// The matching engine rejects aggressive chaser pegs: a Buy offset must be <= 0 and a
+/// Sell offset must be >= 0. We check locally to give a clear error and avoid a round-trip.
+fn validate_chase_offset(side: OrderSide, offset: f64) -> Result<()> {
+    let ok = match side {
+        OrderSide::Buy => offset <= 0.0,
+        OrderSide::Sell => offset >= 0.0,
+    };
+    if ok {
+        Ok(())
+    } else {
+        Err(crate::errors::BitmexError::Validation {
+            message: format!(
+                "Chaser offset {offset} invalid for a {} order: Buy offset must be <= 0 and \
+                 Sell offset must be >= 0 (chaser orders rest passively behind the touch).",
+                side.as_api()
+            ),
+        })
+    }
+}
+
+/// Validate the sign convention for a Trailing Stop's `pegOffsetValue`.
+///
+/// A trailing stop triggers away from the market in the loss direction: a Sell (protecting
+/// a long) trails below the market (offset <= 0) and a Buy (protecting a short) trails
+/// above it (offset >= 0). Note this is the opposite of the chaser rule.
+fn validate_trailing_offset(side: OrderSide, offset: f64) -> Result<()> {
+    let ok = match side {
+        OrderSide::Sell => offset <= 0.0,
+        OrderSide::Buy => offset >= 0.0,
+    };
+    if ok {
+        Ok(())
+    } else {
+        Err(crate::errors::BitmexError::Validation {
+            message: format!(
+                "Trailing-stop offset {offset} invalid for a {} order: a Sell (stop-loss on a \
+                 long) offset must be <= 0 and a Buy (stop-loss on a short) offset must be >= 0.",
+                side.as_api()
+            ),
+        })
+    }
+}
+
+/// Build a Chaser order body (`ordType=Pegged`, `execInst=ChaserClassic`/`ChaserBothways`)
+/// after validating the offset sign. Chaser orders peg to the top of book, so they carry
+/// no `price`, `stopPx`, or `pegPriceType`.
+#[allow(clippy::too_many_arguments)]
+fn build_chase_body(
+    symbol: &str,
+    side: OrderSide,
+    qty: f64,
+    offset: f64,
+    bothways: bool,
+    strategy: Option<String>,
+    cl_ord_id: Option<String>,
+    text: Option<String>,
+) -> Result<Value> {
+    validate_chase_offset(side, offset)?;
+    let exec_inst = if bothways { "ChaserBothways" } else { "ChaserClassic" };
+    Ok(build_order_body(
+        symbol, side.as_api(), Some(qty), "Pegged", None, None, None, Some(offset), None,
+        Some(exec_inst.to_string()), strategy, cl_ord_id, text,
+    ))
+}
+
+/// Build a Trailing Stop order body (`pegPriceType=TrailingStopPeg`) after validating the
+/// offset sign. A limit price promotes the order from `Stop` to `StopLimit`; `trigger`
+/// (already mapped to its `execInst` string) selects the reference price.
+#[allow(clippy::too_many_arguments)]
+fn build_trailing_body(
+    symbol: &str,
+    side: OrderSide,
+    qty: f64,
+    offset: f64,
+    limit_price: Option<f64>,
+    trigger: Option<String>,
+    strategy: Option<String>,
+    cl_ord_id: Option<String>,
+    text: Option<String>,
+) -> Result<Value> {
+    validate_trailing_offset(side, offset)?;
+    let order_type = if limit_price.is_some() { "StopLimit" } else { "Stop" };
+    Ok(build_order_body(
+        symbol, side.as_api(), Some(qty), order_type, limit_price, None,
+        Some("TrailingStopPeg".to_string()), Some(offset), None, trigger, strategy, cl_ord_id, text,
+    ))
 }
 
 /// Build the `execInst` for a close order: the trigger price type (if any)
@@ -293,14 +494,14 @@ fn build_close_plan(
     let sl_leg = |cl_ord_id: Option<String>| {
         let ord_type = if stop_limit_px.is_some() { "StopLimit" } else { "Stop" };
         build_order_body(
-            symbol, side, None, ord_type, stop_limit_px, stop_px, None,
+            symbol, side, None, ord_type, stop_limit_px, stop_px, None, None, None,
             Some(exec_inst.to_string()), strategy.clone(), cl_ord_id, text.clone(),
         )
     };
     let tp_leg = |cl_ord_id: Option<String>| {
         let ord_type = if tp_limit_px.is_some() { "LimitIfTouched" } else { "MarketIfTouched" };
         build_order_body(
-            symbol, side, None, ord_type, tp_limit_px, tp_px, None,
+            symbol, side, None, ord_type, tp_limit_px, tp_px, None, None, None,
             Some(exec_inst.to_string()), strategy.clone(), cl_ord_id, text.clone(),
         )
     };
@@ -322,7 +523,7 @@ fn build_close_plan(
         (None, None) => {
             // Immediate market close of the full position.
             let body = build_order_body(
-                symbol, side, None, "Market", None, None, None,
+                symbol, side, None, "Market", None, None, None, None, None,
                 Some(exec_inst.to_string()), strategy, cl_ord_id, text,
             );
             ClosePlan { path: "/order", body }
@@ -348,9 +549,9 @@ pub(crate) async fn run(
 ) -> Result<CommandOutput> {
     match cmd {
         OrderCommand::Buy {
-            symbol, qty, order_type, price, stop_px, tif, exec_inst, strategy, cl_ord_id, text, validate,
+            symbol, qty, order_type, price, stop_px, peg_price_type, peg_offset_value, tif, exec_inst, strategy, cl_ord_id, text, validate,
         } => {
-            let body = build_order_body(&symbol, "Buy", Some(qty), &order_type, price, stop_px, tif, exec_inst, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text);
+            let body = build_order_body(&symbol, "Buy", Some(qty), &order_type, price, stop_px, peg_price_type.map(|p| p.as_api().to_string()), peg_offset_value, tif, exec_inst, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text);
             if validate {
                 return Ok(CommandOutput::from_json(body));
             }
@@ -362,14 +563,42 @@ pub(crate) async fn run(
         }
 
         OrderCommand::Sell {
-            symbol, qty, order_type, price, stop_px, tif, exec_inst, strategy, cl_ord_id, text, validate,
+            symbol, qty, order_type, price, stop_px, peg_price_type, peg_offset_value, tif, exec_inst, strategy, cl_ord_id, text, validate,
         } => {
-            let body = build_order_body(&symbol, "Sell", Some(qty), &order_type, price, stop_px, tif, exec_inst, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text);
+            let body = build_order_body(&symbol, "Sell", Some(qty), &order_type, price, stop_px, peg_price_type.map(|p| p.as_api().to_string()), peg_offset_value, tif, exec_inst, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text);
             if validate {
                 return Ok(CommandOutput::from_json(body));
             }
             if !ctx.force {
                 confirm_destructive(&format!("Place SELL order: {} {} @ {:?}?", qty, symbol, price))?;
+            }
+            let val = client.post("/order", &body, creds).await?;
+            Ok(CommandOutput::from_json(val))
+        }
+
+        OrderCommand::Chase {
+            symbol, side, qty, offset, bothways, strategy, cl_ord_id, text, validate,
+        } => {
+            let body = build_chase_body(&symbol, side, qty, offset, bothways, strategy.map(|s| s.as_api().to_string()), cl_ord_id, text)?;
+            if validate {
+                return Ok(CommandOutput::from_json(body));
+            }
+            if !ctx.force {
+                confirm_destructive(&format!("Place {} CHASE order: {} {} offset {}?", side.as_api(), qty, symbol, offset))?;
+            }
+            let val = client.post("/order", &body, creds).await?;
+            Ok(CommandOutput::from_json(val))
+        }
+
+        OrderCommand::TrailingStop {
+            symbol, side, qty, offset, limit_price, trigger, strategy, cl_ord_id, text, validate,
+        } => {
+            let body = build_trailing_body(&symbol, side, qty, offset, limit_price, trigger.map(|t| t.as_api().to_string()), strategy.map(|s| s.as_api().to_string()), cl_ord_id, text)?;
+            if validate {
+                return Ok(CommandOutput::from_json(body));
+            }
+            if !ctx.force {
+                confirm_destructive(&format!("Place {} TRAILING STOP: {} {} offset {}?", side.as_api(), qty, symbol, offset))?;
             }
             let val = client.post("/order", &body, creds).await?;
             Ok(CommandOutput::from_json(val))
@@ -491,7 +720,8 @@ mod tests {
 
     fn sample_body(strategy: Option<String>) -> Value {
         build_order_body(
-            "XBTUSD", "Buy", Some(100.0), "Limit", Some(50000.0), None, None, None, strategy, None, None,
+            "XBTUSD", "Buy", Some(100.0), "Limit", Some(50000.0), None, None, None, None, None,
+            strategy, None, None,
         )
     }
 
@@ -523,7 +753,7 @@ mod tests {
     #[test]
     fn build_order_body_omits_qty_when_none() {
         let body = build_order_body(
-            "XBTUSD", "Sell", None, "Stop", None, Some(50000.0), None,
+            "XBTUSD", "Sell", None, "Stop", None, Some(50000.0), None, None, None,
             Some("MarkPrice,Close".to_string()), None, None, None,
         );
         assert!(body.get("orderQty").is_none());
@@ -531,8 +761,8 @@ mod tests {
 
     #[test]
     fn close_side_and_trigger_map_to_exact_api_strings() {
-        assert_eq!(CloseSide::Buy.as_api(), "Buy");
-        assert_eq!(CloseSide::Sell.as_api(), "Sell");
+        assert_eq!(OrderSide::Buy.as_api(), "Buy");
+        assert_eq!(OrderSide::Sell.as_api(), "Sell");
         assert_eq!(TriggerType::Last.as_api(), "LastPrice");
         assert_eq!(TriggerType::Mark.as_api(), "MarkPrice");
         assert_eq!(TriggerType::Index.as_api(), "IndexPrice");
@@ -624,5 +854,102 @@ mod tests {
             assert_eq!(leg["contingencyType"], "OneCancelsTheOther");
             assert!(leg.get("orderQty").is_none());
         }
+    }
+
+    #[test]
+    fn peg_price_type_maps_to_exact_api_strings() {
+        assert_eq!(PegPriceType::LastPeg.as_api(), "LastPeg");
+        assert_eq!(PegPriceType::MidPricePeg.as_api(), "MidPricePeg");
+        assert_eq!(PegPriceType::MarketPeg.as_api(), "MarketPeg");
+        assert_eq!(PegPriceType::PrimaryPeg.as_api(), "PrimaryPeg");
+        assert_eq!(PegPriceType::TrailingStopPeg.as_api(), "TrailingStopPeg");
+    }
+
+    #[test]
+    fn build_order_body_includes_peg_fields_when_set() {
+        let body = build_order_body(
+            "XBTUSD", "Buy", Some(100.0), "Pegged", None, None,
+            Some("PrimaryPeg".to_string()), Some(-1.0), None, Some("Fixed".to_string()),
+            None, None, None,
+        );
+        assert_eq!(body["pegPriceType"], "PrimaryPeg");
+        assert_eq!(body["pegOffsetValue"], -1.0);
+        assert_eq!(body["execInst"], "Fixed");
+        assert_eq!(body["ordType"], "Pegged");
+    }
+
+    #[test]
+    fn build_order_body_omits_peg_fields_when_unset() {
+        let body = sample_body(None);
+        assert!(body.get("pegPriceType").is_none());
+        assert!(body.get("pegOffsetValue").is_none());
+    }
+
+    #[test]
+    fn chase_offset_sign_rule_enforced() {
+        // Valid: Buy <= 0, Sell >= 0.
+        assert!(validate_chase_offset(OrderSide::Buy, -1.0).is_ok());
+        assert!(validate_chase_offset(OrderSide::Buy, 0.0).is_ok());
+        assert!(validate_chase_offset(OrderSide::Sell, 1.0).is_ok());
+        assert!(validate_chase_offset(OrderSide::Sell, 0.0).is_ok());
+        // Invalid: Buy > 0, Sell < 0.
+        assert!(validate_chase_offset(OrderSide::Buy, 1.0).is_err());
+        assert!(validate_chase_offset(OrderSide::Sell, -1.0).is_err());
+    }
+
+    #[test]
+    fn trailing_offset_sign_rule_is_opposite_of_chase() {
+        // Valid: Sell <= 0, Buy >= 0 (opposite of chaser).
+        assert!(validate_trailing_offset(OrderSide::Sell, -100.0).is_ok());
+        assert!(validate_trailing_offset(OrderSide::Buy, 100.0).is_ok());
+        // Invalid.
+        assert!(validate_trailing_offset(OrderSide::Sell, 100.0).is_err());
+        assert!(validate_trailing_offset(OrderSide::Buy, -100.0).is_err());
+    }
+
+    #[test]
+    fn chase_offset_error_is_validation_category() {
+        let err = validate_chase_offset(OrderSide::Buy, 1.0).unwrap_err();
+        assert_eq!(err.category(), crate::errors::ErrorCategory::Validation);
+    }
+
+    #[test]
+    fn build_chase_body_sets_pegged_and_exec_inst() {
+        let classic = build_chase_body("XBTUSD", OrderSide::Buy, 100.0, -1.0, false, None, None, None).unwrap();
+        assert_eq!(classic["ordType"], "Pegged");
+        assert_eq!(classic["side"], "Buy");
+        assert_eq!(classic["execInst"], "ChaserClassic");
+        assert_eq!(classic["pegOffsetValue"], -1.0);
+        assert!(classic.get("price").is_none());
+        assert!(classic.get("pegPriceType").is_none());
+
+        let both = build_chase_body("XBTUSD", OrderSide::Sell, 100.0, 1.0, true, None, None, None).unwrap();
+        assert_eq!(both["execInst"], "ChaserBothways");
+    }
+
+    #[test]
+    fn build_chase_body_rejects_bad_sign() {
+        assert!(build_chase_body("XBTUSD", OrderSide::Buy, 100.0, 1.0, false, None, None, None).is_err());
+    }
+
+    #[test]
+    fn build_trailing_body_stop_vs_stoplimit_and_peg_type() {
+        let stop = build_trailing_body("XBTUSD", OrderSide::Sell, 100.0, -100.0, None, None, None, None, None).unwrap();
+        assert_eq!(stop["ordType"], "Stop");
+        assert_eq!(stop["pegPriceType"], "TrailingStopPeg");
+        assert_eq!(stop["pegOffsetValue"], -100.0);
+        assert!(stop.get("price").is_none());
+
+        let stop_limit = build_trailing_body(
+            "XBTUSD", OrderSide::Sell, 100.0, -100.0, Some(49000.0), Some("LastPrice".to_string()), None, None, None,
+        ).unwrap();
+        assert_eq!(stop_limit["ordType"], "StopLimit");
+        assert_eq!(stop_limit["price"], 49000.0);
+        assert_eq!(stop_limit["execInst"], "LastPrice");
+    }
+
+    #[test]
+    fn build_trailing_body_rejects_bad_sign() {
+        assert!(build_trailing_body("XBTUSD", OrderSide::Sell, 100.0, 100.0, None, None, None, None, None).is_err());
     }
 }

@@ -822,6 +822,35 @@ mod tests {
     }
 
     #[test]
+    fn build_argv_routes_chase_positionals_and_offset() {
+        // End-to-end MCP -> CLI routing for the new chase command, using the real
+        // clap-derived arg metadata from the registry (positional side + hyphen-value offset).
+        use super::super::registry::ToolRegistry;
+        let registry = ToolRegistry::build(&["order".into()]).unwrap();
+        let chase = registry
+            .tools()
+            .iter()
+            .find(|e| e.tool.name == "bitmex.order.chase")
+            .expect("order.chase registered");
+
+        let mut args = serde_json::Map::new();
+        args.insert("symbol".into(), serde_json::json!("XBTUSD"));
+        args.insert("side".into(), serde_json::json!("Buy"));
+        args.insert("qty".into(), serde_json::json!(100));
+        args.insert("offset".into(), serde_json::json!(-1));
+
+        let argv = build_argv("order chase", &Some(args), &chase.clap_args);
+
+        let ci = argv.iter().position(|a| a == "chase").unwrap();
+        assert_eq!(&argv[ci + 1..ci + 4], &["XBTUSD", "Buy", "100"]);
+        let oi = argv
+            .iter()
+            .position(|a| a == "--offset")
+            .expect("offset flag present");
+        assert_eq!(argv[oi + 1], "-1");
+    }
+
+    #[test]
     fn build_argv_null_skipped() {
         let meta = vec![flag("since", "since")];
         let mut args = serde_json::Map::new();

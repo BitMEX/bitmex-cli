@@ -189,6 +189,30 @@ bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger ma
 bitmex order close XBTUSD --side sell                                  # market close 100%
 ```
 
+Pegged orders price relative to the live market. `chase` and `trailing-stop` are guided
+wrappers that set the right `ordType`/`execInst` and enforce the offset **sign rule**
+locally (a wrong sign is rejected before it reaches the exchange).
+
+```bash
+# Pegged limit — Fixed price relative to the touch (PrimaryPeg = near, MarketPeg = far)
+bitmex order buy XBTUSD 100 --order-type Pegged --exec-inst Fixed \
+    --peg-price-type PrimaryPeg --peg-offset-value -1
+
+# Chaser — re-prices to follow the top of book. Buy offset <= 0, Sell offset >= 0.
+bitmex order chase XBTUSD Buy  100 --offset -1              # ChaserClassic (default)
+bitmex order chase XBTUSD Sell 100 --offset  1 --bothways  # ChaserBothways
+
+# Trailing stop — stopPx trails the market. Sell offset <= 0, Buy offset >= 0.
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100                     # Stop
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100 --limit-price 49000 # StopLimit
+
+# Amend a live peg's offset without cancel/replace
+bitmex order amend --order-id <id> --peg-offset-value -2
+```
+
+See [Order Types & Execution Instructions](https://support.bitmex.com/hc/en-gb/articles/6911327963293)
+for the full peg/chaser reference.
+
 ### Positions (auth required)
 
 ```bash
