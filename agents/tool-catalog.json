@@ -216,10 +216,18 @@
       "parameters": [
         {"name": "symbol", "type": "string", "required": true},
         {"name": "qty", "type": "number", "required": true},
-        {"name": "order_type", "type": "string", "required": false, "default": "Limit"},
+        {"name": "order_type", "type": "string", "required": false, "default": "Limit", "description": "ordType: Limit, Market, Stop, StopLimit, MarketIfTouched, LimitIfTouched, or Pegged."},
         {"name": "price", "type": "number", "required": false},
+        {"name": "peg_price_type", "type": "string", "required": false, "description": "Reference price for a Pegged/trailing order (pegPriceType). Pegged limits require exec_inst=Fixed.", "oneOf": [
+          {"const": "PrimaryPeg", "description": "Peg to the near touch (best price on your own side)"},
+          {"const": "MarketPeg", "description": "Peg to the far touch (best price on the opposite side)"},
+          {"const": "TrailingStopPeg", "description": "Trailing stop; use with order_type Stop/StopLimit (see order trailing-stop)"},
+          {"const": "LastPeg", "description": "Peg to the last-traded price"},
+          {"const": "MidPricePeg", "description": "Peg to the mid price"}
+        ]},
+        {"name": "peg_offset_value", "type": "number", "required": false, "description": "Offset from the peg reference price (pegOffsetValue). For chaser/trailing orders the sign is constrained — prefer the guided 'order chase' / 'order trailing-stop' commands."},
         {"name": "tif", "type": "string", "required": false},
-        {"name": "exec_inst", "type": "string", "required": false},
+        {"name": "exec_inst", "type": "string", "required": false, "description": "Execution instructions, e.g. Fixed (required for Pegged limits), ParticipateDoNotInitiate, ReduceOnly, ChaserClassic, ChaserBothways."},
         {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
         {"name": "validate", "type": "boolean", "required": false}
       ],
@@ -235,12 +243,81 @@
       "parameters": [
         {"name": "symbol", "type": "string", "required": true},
         {"name": "qty", "type": "number", "required": true},
-        {"name": "order_type", "type": "string", "required": false, "default": "Limit"},
+        {"name": "order_type", "type": "string", "required": false, "default": "Limit", "description": "ordType: Limit, Market, Stop, StopLimit, MarketIfTouched, LimitIfTouched, or Pegged."},
         {"name": "price", "type": "number", "required": false},
+        {"name": "peg_price_type", "type": "string", "required": false, "description": "Reference price for a Pegged/trailing order (pegPriceType). Pegged limits require exec_inst=Fixed.", "oneOf": [
+          {"const": "PrimaryPeg", "description": "Peg to the near touch (best price on your own side)"},
+          {"const": "MarketPeg", "description": "Peg to the far touch (best price on the opposite side)"},
+          {"const": "TrailingStopPeg", "description": "Trailing stop; use with order_type Stop/StopLimit (see order trailing-stop)"},
+          {"const": "LastPeg", "description": "Peg to the last-traded price"},
+          {"const": "MidPricePeg", "description": "Peg to the mid price"}
+        ]},
+        {"name": "peg_offset_value", "type": "number", "required": false, "description": "Offset from the peg reference price (pegOffsetValue). For chaser/trailing orders the sign is constrained — prefer the guided 'order chase' / 'order trailing-stop' commands."},
+        {"name": "tif", "type": "string", "required": false},
+        {"name": "exec_inst", "type": "string", "required": false, "description": "Execution instructions, e.g. Fixed (required for Pegged limits), ParticipateDoNotInitiate, ReduceOnly, ChaserClassic, ChaserBothways."},
         {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
         {"name": "validate", "type": "boolean", "required": false}
       ],
       "example": "bitmex order sell XBTUSD 100 --price 50000 --strategy Short -o json"
+    },
+    {
+      "name": "order chase",
+      "command": "bitmex order chase <symbol> <side> <qty>",
+      "group": "order",
+      "description": "[DANGEROUS] Place a Chaser order (Pegged) that re-prices to follow the top of book. Buy offset must be <= 0, Sell offset must be >= 0. Max 5 chaser orders per account.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "side", "type": "string", "required": true, "oneOf": [{"const": "Buy"}, {"const": "Sell"}]},
+        {"name": "qty", "type": "number", "required": true},
+        {"name": "offset", "type": "number", "required": true, "description": "Target distance from the top of book (pegOffsetValue). Buy offset must be <= 0, Sell offset must be >= 0; rejected locally otherwise."},
+        {"name": "bothways", "type": "boolean", "required": false, "description": "Keep the distance to the front of book constant (ChaserBothways). Default follows only when drifting too far away (ChaserClassic)."},
+        {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
+        {"name": "validate", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex order chase XBTUSD Buy 100 --offset -1 -o json"
+    },
+    {
+      "name": "order trailing-stop",
+      "command": "bitmex order trailing-stop <symbol> <side> <qty>",
+      "group": "order",
+      "description": "[DANGEROUS] Place a Trailing Stop (TrailingStopPeg): stopPx trails the market by a fixed offset and freezes as the market moves toward it. Sell offset must be <= 0, Buy offset must be >= 0.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "side", "type": "string", "required": true, "oneOf": [{"const": "Buy"}, {"const": "Sell"}]},
+        {"name": "qty", "type": "number", "required": true},
+        {"name": "offset", "type": "number", "required": true, "description": "Trailing distance from the trigger price (pegOffsetValue). Sell offset must be <= 0, Buy offset must be >= 0; rejected locally otherwise."},
+        {"name": "limit_price", "type": "number", "required": false, "description": "Optional limit price; when set the order is a StopLimit, otherwise a Stop."},
+        {"name": "trigger", "type": "string", "required": false, "description": "Reference price used to trigger (execInst). Defaults to mark.", "oneOf": [{"const": "mark"}, {"const": "last"}, {"const": "index"}]},
+        {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
+        {"name": "validate", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex order trailing-stop XBTUSD Sell 100 --offset -100 -o json"
+    },
+    {
+      "name": "order close",
+      "command": "bitmex order close <symbol> --side <buy|sell>",
+      "group": "order",
+      "description": "[DANGEROUS] Place a 100% position-closing order: Stop-Loss, Take-Profit, an OCO bracket (both, linked), or an immediate market close. orderQty is omitted so the order tracks the full position dynamically (renders as SL/TP 100%). Pass both --stop-px and --tp-px for an OCO bracket. --side sell closes a long, buy closes a short.",
+      "auth_required": true,
+      "dangerous": true,
+      "parameters": [
+        {"name": "symbol", "type": "string", "required": true},
+        {"name": "side", "type": "string", "required": true, "description": "buy or sell. sell closes a long, buy closes a short."},
+        {"name": "stop_px", "type": "number", "required": false, "description": "Stop-Loss trigger price (ordType Stop, or StopLimit with stop_limit_px)."},
+        {"name": "tp_px", "type": "number", "required": false, "description": "Take-Profit trigger price (ordType MarketIfTouched, or LimitIfTouched with tp_limit_px)."},
+        {"name": "trigger", "type": "string", "required": false, "description": "Trigger price type: last, mark, or index. Required when stop_px or tp_px is set."},
+        {"name": "stop_limit_px", "type": "number", "required": false, "description": "Limit price for the Stop-Loss leg (upgrades Stop to StopLimit)."},
+        {"name": "tp_limit_px", "type": "number", "required": false, "description": "Limit price for the Take-Profit leg (upgrades MarketIfTouched to LimitIfTouched)."},
+        {"name": "link_id", "type": "string", "required": false, "description": "OCO clOrdLinkID. Auto-generated for brackets when omitted."},
+        {"name": "strategy", "type": "string", "required": false, "description": "Hedge Mode position strategy: OneWay, Long, or Short. Requires hedge mode enabled on the account."},
+        {"name": "cl_ord_id", "type": "string", "required": false},
+        {"name": "validate", "type": "boolean", "required": false}
+      ],
+      "example": "bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger mark -o json"
     },
     {
       "name": "order amend",
@@ -252,7 +329,8 @@
       "parameters": [
         {"name": "order_id", "type": "string", "required": false},
         {"name": "price", "type": "number", "required": false},
-        {"name": "qty", "type": "number", "required": false}
+        {"name": "qty", "type": "number", "required": false},
+        {"name": "peg_offset_value", "type": "number", "required": false, "description": "New peg offset (pegOffsetValue) for a pegged/trailing/chaser order. Amend instead of cancel/replace to stay under the rate limit."}
       ],
       "example": "bitmex order amend --order-id abc123 --price 51000 -o json"
     },
