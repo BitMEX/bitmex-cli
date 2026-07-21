@@ -106,6 +106,25 @@ bitmex order buy XBTUSD 100 --price 50000 --validate -o json
 bitmex order buy XBTUSD 100 --price 50000 --yes -o json
 ```
 
+### Peg, chaser & trailing-stop orders (auth required, dangerous)
+
+Pegged orders price relative to the live market. `chase` and `trailing-stop` are guided
+wrappers that set `ordType`/`execInst` and enforce the offset sign locally (a wrong sign
+returns a `validation` error before reaching the exchange). Their sign rules are opposite:
+
+```bash
+# Pegged limit — requires exec_inst Fixed (PrimaryPeg = near touch, MarketPeg = far touch)
+bitmex order buy XBTUSD 100 --order-type Pegged --exec-inst Fixed \
+  --peg-price-type PrimaryPeg --peg-offset-value -1 --yes -o json
+
+# Chaser — follows the top of book. Buy offset <= 0, Sell offset >= 0. Max 5 per account.
+bitmex order chase XBTUSD Buy 100 --offset -1 --yes -o json
+bitmex order chase XBTUSD Sell 100 --offset 1 --bothways --yes -o json
+
+# Trailing stop — Sell offset <= 0, Buy offset >= 0 (opposite of chaser)
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100 --yes -o json
+```
+
 ### Testnet
 
 ```bash

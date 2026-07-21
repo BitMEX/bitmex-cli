@@ -46,6 +46,7 @@ fn order_help_shows_subcommands() {
         .success()
         .stdout(predicate::str::contains("buy"))
         .stdout(predicate::str::contains("sell"))
+        .stdout(predicate::str::contains("close"))
         .stdout(predicate::str::contains("cancel"));
 }
 
@@ -164,4 +165,108 @@ fn order_buy_help_shows_strategy_flag() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--strategy"));
+}
+
+#[test]
+fn order_close_help_shows_flags() {
+    bitmex()
+        .args(["order", "close", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--side"))
+        .stdout(predicate::str::contains("--stop-px"))
+        .stdout(predicate::str::contains("--tp-px"))
+        .stdout(predicate::str::contains("--trigger"));
+}
+
+#[test]
+fn order_close_rejects_cl_ord_id_for_oco_bracket() {
+    // cl_ord_id cannot be assigned to an OCO bracket (two orders can't share one clOrdID).
+    // The guard fires before any network call, so fake credentials are sufficient.
+    bitmex()
+        .args([
+            "--api-key", "fake",
+            "--api-secret", "fake",
+            "order", "close", "XBTUSD",
+            "--side", "sell",
+            "--stop-px", "50000",
+            "--tp-px", "60000",
+            "--trigger", "mark",
+            "--cl-ord-id", "my-id",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--cl-ord-id is not supported for OCO brackets"));
+}
+
+#[test]
+fn order_help_lists_chase_and_trailing_stop() {
+    bitmex()
+        .args(["order", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("chase"))
+        .stdout(predicate::str::contains("trailing-stop"));
+}
+
+#[test]
+fn order_chase_help_shows_offset_and_bothways() {
+    bitmex()
+        .args(["order", "chase", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--offset"))
+        .stdout(predicate::str::contains("--bothways"));
+}
+
+#[test]
+fn order_trailing_stop_help_shows_offset_and_limit_price() {
+    bitmex()
+        .args(["order", "trailing-stop", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--offset"))
+        .stdout(predicate::str::contains("--limit-price"));
+}
+
+/// `--validate` is a local dry-run: it builds and prints the request body without touching
+/// the network. Dummy credentials are supplied only so credential resolution succeeds; they
+/// are never transmitted. No-keychain avoids reading the developer's real profile.
+fn bitmex_validate() -> Command {
+    let mut cmd = bitmex();
+    cmd.env("BITMEX_API_KEY", "dummy")
+        .env("BITMEX_API_SECRET", "dummy")
+        .env("BITMEX_NO_KEYCHAIN", "true");
+    cmd
+}
+
+#[test]
+fn order_chase_validate_emits_pegged_chaser_body() {
+    bitmex_validate()
+        .args(["order", "chase", "XBTUSD", "Buy", "100", "--offset", "-1", "--validate", "-o", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"ordType\":\"Pegged\""))
+        .stdout(predicate::str::contains("\"execInst\":\"ChaserClassic\""))
+        .stdout(predicate::str::contains("\"pegOffsetValue\":-1"));
+}
+
+#[test]
+fn order_chase_rejects_wrong_sign_offset() {
+    // Buy offset must be <= 0; a positive offset is rejected locally as a validation error.
+    bitmex_validate()
+        .args(["order", "chase", "XBTUSD", "Buy", "100", "--offset", "1", "--validate", "-o", "json"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("\"error\":\"validation\""));
+}
+
+#[test]
+fn order_trailing_stop_validate_emits_trailing_peg_body() {
+    bitmex_validate()
+        .args(["order", "trailing-stop", "XBTUSD", "Sell", "100", "--offset", "-100", "--validate", "-o", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"ordType\":\"Stop\""))
+        .stdout(predicate::str::contains("\"pegPriceType\":\"TrailingStopPeg\""));
 }
