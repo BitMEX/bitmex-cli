@@ -1,10 +1,10 @@
 /// `bitmex auth` subcommands: add, set, list, show, use, delete, reset.
 use clap::Subcommand;
 
+use crate::AppContext;
+use crate::cli::output::CommandOutput;
 use crate::config::{self, keychain, mask_string};
 use crate::errors::{BitmexError, Result};
-use crate::cli::output::CommandOutput;
-use crate::AppContext;
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum AuthCommand {
@@ -65,9 +65,13 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
             } else {
                 inquire::Text::new("Profile name")
                     .with_default("default")
-                    .with_help_message("A short label, e.g. \"default\", \"testnet\", \"trading-bot\"")
+                    .with_help_message(
+                        "A short label, e.g. \"default\", \"testnet\", \"trading-bot\"",
+                    )
                     .prompt()
-                    .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             };
 
             // Testnet?
@@ -78,7 +82,9 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
                 inquire::Confirm::new("Is this a testnet profile?")
                     .with_default(false)
                     .prompt()
-                    .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             };
 
             // API key
@@ -97,7 +103,9 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
                 inquire::Text::new("API Key")
                     .with_help_message("Paste your BitMEX API key")
                     .prompt()
-                    .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             };
 
             let api_secret = if let Some(s) = ctx.api_secret.clone() {
@@ -107,7 +115,9 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
                     .without_confirmation()
                     .with_help_message("Paste your BitMEX API secret (hidden)")
                     .prompt()
-                    .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             };
 
             // Summary + confirmation
@@ -128,7 +138,9 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
             let confirmed = inquire::Confirm::new("Save these credentials?")
                 .with_default(true)
                 .prompt()
-                .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?;
+                .map_err(|e| BitmexError::Config {
+                    message: format!("Prompt error: {e}"),
+                })?;
 
             if !confirmed {
                 return Ok(CommandOutput::message("Cancelled — no credentials saved."));
@@ -141,12 +153,12 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
             let set_active = if cfg.active_profile.is_none() {
                 true // auto-activate when nothing is set
             } else if cfg.active_profile.as_deref() != Some(&profile_name) {
-                inquire::Confirm::new(&format!(
-                    "Set \"{profile_name}\" as the active profile?"
-                ))
-                .with_default(true)
-                .prompt()
-                .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                inquire::Confirm::new(&format!("Set \"{profile_name}\" as the active profile?"))
+                    .with_default(true)
+                    .prompt()
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             } else {
                 false
             };
@@ -181,7 +193,9 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
             } else {
                 inquire::Text::new("API Key")
                     .prompt()
-                    .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             };
 
             let api_secret = if let Some(s) = ctx.api_secret.clone() {
@@ -190,7 +204,9 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
                 inquire::Password::new("API Secret")
                     .without_confirmation()
                     .prompt()
-                    .map_err(|e| BitmexError::Config { message: format!("Prompt error: {e}") })?
+                    .map_err(|e| BitmexError::Config {
+                        message: format!("Prompt error: {e}"),
+                    })?
             };
 
             save_profile_creds(ctx, &profile_name, &api_key, &api_secret, is_testnet)?;
@@ -261,11 +277,14 @@ pub(crate) async fn run(cmd: AuthCommand, ctx: &AppContext) -> Result<CommandOut
             let has_keychain_secret =
                 keychain::load_secret(&profile_name, ctx.no_keychain)?.is_some();
             let (key_display, source) =
-                match config::get_profile(&cfg, &profile_name).and_then(|p| p.api_key.as_deref())
-                {
+                match config::get_profile(&cfg, &profile_name).and_then(|p| p.api_key.as_deref()) {
                     Some(k) => (
                         mask_string(k),
-                        if has_keychain_secret { "keychain" } else { "config file" },
+                        if has_keychain_secret {
+                            "keychain"
+                        } else {
+                            "config file"
+                        },
                     ),
                     None => ("not set".to_string(), "none"),
                 };
@@ -355,7 +374,9 @@ fn save_profile_creds(
     // keychain prompt when loading credentials.
     if let Some(p) = cfg.profiles.iter_mut().find(|p| p.name == profile_name) {
         p.api_key = Some(api_key.to_string());
-        if !stored_in_keychain {
+        if stored_in_keychain {
+            p.api_secret = None;
+        } else {
             // Keychain unavailable — also store the secret as plaintext fallback.
             p.api_secret = Some(api_secret.to_string());
         }
