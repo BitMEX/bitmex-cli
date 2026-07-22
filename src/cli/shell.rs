@@ -10,8 +10,9 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use reedline::{
-    DefaultCompleter, DefaultHinter, FileBackedHistory, Highlighter, Prompt, PromptEditMode,
-    PromptHistorySearch, Reedline, Signal, StyledText,
+    DefaultCompleter, DefaultHinter, FileBackedHistory, Highlighter, History, HistoryItem,
+    HistoryItemId, HistorySessionId, Prompt, PromptEditMode, PromptHistorySearch, Reedline,
+    SearchQuery, Signal, StyledText,
 };
 
 use crate::errors::{BitmexError, Result};
@@ -22,10 +23,12 @@ const HISTORY_CAPACITY: usize = 1_000;
 /// Run the interactive shell session.
 pub(crate) async fn run(ctx: &AppContext) -> Result<()> {
     let history_path = history_file()?;
+    secure_history_file(&history_path)?;
     let history = FileBackedHistory::with_file(HISTORY_CAPACITY, history_path)
         .map_err(|e| BitmexError::Config {
             message: format!("Failed to open shell history: {e}"),
         })?;
+    let history = RedactingHistory::new(history);
 
     let mut rl = Reedline::create()
         .with_history(Box::new(history))
@@ -258,6 +261,117 @@ fn history_file() -> Result<PathBuf> {
     Ok(dir.join("history"))
 }
 
+/// Ensure the shell history file exists with owner-only (0600) permissions.
+///
+/// `reedline`'s `FileBackedHistory` opens the file via a plain `OpenOptions`
+/// with no mode set, so a freshly created file would inherit the process
+/// umask (commonly 0644). We create it ourselves first with `mode(0o600)`:
+/// on Unix that mode is applied atomically by the `open(2)` syscall at the
+/// moment of creation, so the file is never briefly world/group-readable.
+/// `reedline` then just opens the already-existing, correctly-permissioned
+/// file. A pre-existing file (e.g. from before this fix) is chmod'd, which
+/// only tightens permissions it already had — no new exposure window.
+#[cfg(unix)]
+fn secure_history_file(path: &std::path::Path) -> Result<()> {
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    if path.exists() {
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    } else {
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)?;
+    }
+    Ok(())
+}
+
+/// No-op on non-Unix platforms: we don't set an explicit ACL here.
+///
+/// On Windows this relies on `%APPDATA%\bitmex` inheriting the user
+/// profile's default NTFS permissions (owner + SYSTEM + Administrators,
+/// not `Everyone`). That's an environmental default, not a guarantee this
+/// function enforces — it can differ on domain-joined or shared machines.
+#[cfg(not(unix))]
+fn secure_history_file(_path: &std::path::Path) -> Result<()> {
+    Ok(())
+}
+
+/// Wraps `FileBackedHistory`, keeping lines that carry exchange credentials
+/// out of the persisted history file entirely.
+///
+/// `FileBackedHistory::save` only ever looks at `command_line` (session id,
+/// exit status, etc. are discarded), so filtering on that field is enough.
+/// Excluded entries are handed back to reedline unchanged instead of going
+/// through `self.inner` — they never reach `self.inner`'s in-memory buffer,
+/// so they can't be written to disk on sync/drop, and they also don't show
+/// up in this session's up-arrow recall.
+struct RedactingHistory {
+    inner: FileBackedHistory,
+}
+
+impl RedactingHistory {
+    fn new(inner: FileBackedHistory) -> Self {
+        Self { inner }
+    }
+}
+
+/// A line is sensitive if it contains `--api-secret` — which is a global flag, so
+/// it can appear on any command line, not just `auth set`.
+fn is_sensitive(command_line: &str) -> bool {
+    let words = shell_words(command_line);
+
+    words
+            .iter()
+            .any(|w|  w == "--api-secret" || w.starts_with("--api-secret="))
+}
+
+impl History for RedactingHistory {
+    fn save(&mut self, entry: HistoryItem) -> reedline::Result<HistoryItem> {
+        if is_sensitive(&entry.command_line) {
+            return Ok(entry);
+        }
+        self.inner.save(entry)
+    }
+
+    fn load(&self, id: HistoryItemId) -> reedline::Result<HistoryItem> {
+        self.inner.load(id)
+    }
+
+    fn count(&self, query: SearchQuery) -> reedline::Result<i64> {
+        self.inner.count(query)
+    }
+
+    fn search(&self, query: SearchQuery) -> reedline::Result<Vec<HistoryItem>> {
+        self.inner.search(query)
+    }
+
+    fn update(
+        &mut self,
+        id: HistoryItemId,
+        updater: &dyn Fn(HistoryItem) -> HistoryItem,
+    ) -> reedline::Result<()> {
+        self.inner.update(id, updater)
+    }
+
+    fn clear(&mut self) -> reedline::Result<()> {
+        self.inner.clear()
+    }
+
+    fn delete(&mut self, id: HistoryItemId) -> reedline::Result<()> {
+        self.inner.delete(id)
+    }
+
+    fn sync(&mut self) -> std::io::Result<()> {
+        self.inner.sync()
+    }
+
+    fn session(&self) -> Option<HistorySessionId> {
+        self.inner.session()
+    }
+}
+
 fn print_shell_help() {
     println!("Available command groups:");
     println!("  market, order, position, execution, wallet, staking, account");
@@ -321,5 +435,70 @@ mod tests {
     #[test]
     fn shell_words_single_quoted() {
         assert_eq!(shell_words("ticker 'XBT USD'"), vec!["ticker", "XBT USD"]);
+    }
+
+    #[test]
+    fn is_sensitive_detects_api_secret_on_auth_set() {
+        assert!(is_sensitive("auth set --api-key foo --api-secret bar"));
+    }
+
+    #[test]
+    fn is_sensitive_detects_inline_secret_flag_on_any_command() {
+        assert!(is_sensitive(
+            "market instrument --symbol XBTUSD --api-secret bar"
+        ));
+    }
+
+    #[test]
+    fn is_sensitive_detects_equals_syntax() {
+        assert!(is_sensitive("auth set --api-secret=bar"));
+    }
+
+    #[test]
+    fn is_sensitive_leaves_api_key_and_other_auth_commands_alone() {
+        // --api-key alone (no --api-secret) and non-secret auth subcommands
+        // are deliberately kept in history — only the secret is redacted.
+        assert!(!is_sensitive(
+            "order buy XBTUSD 100 --price 50000 --api-key foo"
+        ));
+        assert!(!is_sensitive("auth show"));
+        assert!(!is_sensitive("auth reset"));
+    }
+
+    #[test]
+    fn is_sensitive_leaves_ordinary_commands_alone() {
+        assert!(!is_sensitive("market instrument --symbol XBTUSD"));
+        assert!(!is_sensitive("account me"));
+    }
+
+    #[test]
+    fn redacting_history_does_not_persist_sensitive_lines() {
+        let dir =
+            std::env::temp_dir().join(format!("bitmex-cli-test-history-{}", std::process::id()));
+        let path = dir.join("history");
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::remove_file(&path);
+
+        let inner = FileBackedHistory::with_file(100, path.clone()).unwrap();
+        let mut history = RedactingHistory::new(inner);
+
+        history
+            .save(HistoryItem::from_command_line(
+                "auth set --api-key foo --api-secret bar",
+            ))
+            .unwrap();
+        history
+            .save(HistoryItem::from_command_line(
+                "market instrument --symbol XBTUSD",
+            ))
+            .unwrap();
+        history.sync().unwrap();
+        drop(history);
+
+        let contents = std::fs::read_to_string(&path).unwrap_or_default();
+        assert!(!contents.contains("api-secret"));
+        assert!(contents.contains("market instrument"));
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
