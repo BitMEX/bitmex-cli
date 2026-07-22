@@ -317,15 +317,14 @@ impl RedactingHistory {
     }
 }
 
-/// A line is sensitive if it invokes the `auth` command group, or passes
-/// `--api-key`/`--api-secret` directly — both are global clap flags, so
-/// they can appear on any command line, not just `auth set`.
+/// A line is sensitive if it contains `--api-secret` — which is a global flag, so
+/// it can appear on any command line, not just `auth set`.
 fn is_sensitive(command_line: &str) -> bool {
     let words = shell_words(command_line);
-    words.first().map(String::as_str) == Some("auth")
-        || words
+
+    words
             .iter()
-            .any(|w| w == "--api-key" || w == "--api-secret")
+            .any(|w|  w == "--api-secret" || w.starts_with("--api-secret="))
 }
 
 impl History for RedactingHistory {
@@ -439,19 +438,31 @@ mod tests {
     }
 
     #[test]
-    fn is_sensitive_detects_auth_group() {
+    fn is_sensitive_detects_api_secret_on_auth_set() {
         assert!(is_sensitive("auth set --api-key foo --api-secret bar"));
-        assert!(is_sensitive("auth show"));
     }
 
     #[test]
-    fn is_sensitive_detects_inline_secret_flags_on_any_command() {
+    fn is_sensitive_detects_inline_secret_flag_on_any_command() {
         assert!(is_sensitive(
             "market instrument --symbol XBTUSD --api-secret bar"
         ));
-        assert!(is_sensitive(
+    }
+
+    #[test]
+    fn is_sensitive_detects_equals_syntax() {
+        assert!(is_sensitive("auth set --api-secret=bar"));
+    }
+
+    #[test]
+    fn is_sensitive_leaves_api_key_and_other_auth_commands_alone() {
+        // --api-key alone (no --api-secret) and non-secret auth subcommands
+        // are deliberately kept in history — only the secret is redacted.
+        assert!(!is_sensitive(
             "order buy XBTUSD 100 --price 50000 --api-key foo"
         ));
+        assert!(!is_sensitive("auth show"));
+        assert!(!is_sensitive("auth reset"));
     }
 
     #[test]
