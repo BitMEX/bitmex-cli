@@ -289,6 +289,30 @@ bitmex order buy  XBTUSD 100 --price 50000 --strategy Long --yes -o json
 bitmex order sell XBTUSD 100 --price 52000 --strategy Short --yes -o json
 ```
 
+### Peg, Chaser & Trailing Stop orders
+
+Pegged orders price relative to the live market instead of a fixed price. The primitive
+`--peg-price-type`/`--peg-offset-value` flags on `buy`/`sell` map straight to the API
+`pegPriceType`/`pegOffsetValue` fields; `chase` and `trailing-stop` are guided wrappers that
+set `ordType`/`execInst` and **reject a wrong-sign offset locally** (category `validation`)
+before it reaches the exchange.
+
+```bash
+# Pegged limit — requires exec_inst Fixed. PrimaryPeg = near touch, MarketPeg = far touch.
+bitmex order buy XBTUSD 100 --order-type Pegged --exec-inst Fixed \
+    --peg-price-type PrimaryPeg --peg-offset-value -1 --yes -o json
+
+# Chaser (ordType Pegged) — follows the top of book. Sign rule: Buy offset <= 0, Sell >= 0.
+# Max 5 chaser orders per account. --bothways keeps a constant distance (ChaserBothways).
+bitmex order chase XBTUSD Buy  100 --offset -1 --yes -o json
+bitmex order chase XBTUSD Sell 100 --offset  1 --bothways --yes -o json
+
+# Trailing stop (pegPriceType TrailingStopPeg) — sign rule is the OPPOSITE of chaser:
+# Sell offset <= 0, Buy offset >= 0. --limit-price promotes Stop to StopLimit.
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100 --yes -o json
+bitmex order trailing-stop XBTUSD Sell 100 --offset -100 --limit-price 49000 --yes -o json
+```
+
 ### Tick size and lot size alignment
 
 Every instrument enforces a minimum price increment (`tickSize`) and minimum quantity increment (`lotSize`). Submitting a price or quantity that isn't a multiple of these will return a `400 Invalid price` or `400 Invalid quantity` error.
@@ -322,6 +346,26 @@ bitmex order buy XBTUSD 100 --price 50000 --validate -o json
 # 3. Confirm with user, then execute (--yes skips interactive prompt for agent use)
 bitmex order buy XBTUSD 100 --price 50000 --yes -o json
 ```
+
+### Closing positions (Stop-Loss, Take-Profit, OCO)
+
+`order close` places a 100% position-closing order. It omits `orderQty`, so the order tracks the **entire** position dynamically — BitMEX renders it as `SL (100%)` / `TP (100%)`, and it never needs resyncing as the position size changes. `--side sell` closes a long; `--side buy` closes a short. A trigger price type (`--trigger last|mark|index`) is required whenever `--stop-px` or `--tp-px` is set; `mark` resists wick-outs and is recommended for risk orders.
+
+```bash
+# Stop-Loss 100% (Stop; add --stop-limit-px for StopLimit)
+bitmex order close XBTUSD --side sell --stop-px 50000 --trigger mark --yes -o json
+
+# Take-Profit 100% (MarketIfTouched; add --tp-limit-px for LimitIfTouched)
+bitmex order close XBTUSD --side sell --tp-px 60000 --trigger last --yes -o json
+
+# OCO bracket: SL + TP linked via clOrdLinkID + contingencyType. Filling one cancels the other.
+bitmex order close XBTUSD --side sell --stop-px 50000 --tp-px 60000 --trigger mark --yes -o json
+
+# Immediate market close of the full position
+bitmex order close XBTUSD --side sell --yes -o json
+```
+
+Preview any of these with `--validate` to inspect the exact request body (for OCO, both legs) before submitting.
 
 ### Stream live data to a pipeline
 
