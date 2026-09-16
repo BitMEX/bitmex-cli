@@ -37,7 +37,7 @@ keyring = { version = "3", features = ["apple-native", "linux-native-sync-persis
 inquire = "0.7"
 reedline = "0.38"
 nu-ansi-term = "0.50"
-rmcp = { version = "1.4", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server"] }
+rmcp = { version = "2.0", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server"] }
 axum = "0.8"
 tower = { version = "0.5", features = ["util"] }
 pin-project-lite = "0.2"
